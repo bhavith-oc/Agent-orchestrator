@@ -1,0 +1,177 @@
+# OpenClaw One-Click Deployment
+# Standard YAML — never modified. All customization via .env file.
+#
+# Usage:
+#   1. Generate .env from the Aether UI (Deploy page) or manually
+#   2. docker compose up -d
+#   3. Connect to ws://<host>:<PORT> from Aether UI
+
+services:
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:latest
+    restart: unless-stopped
+    user: root
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      PATH: /app:/home/node/.npm-global/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      XDG_CONFIG_HOME: /home/node/.openclaw
+      NPM_CONFIG_PREFIX: /home/node/.npm-global
+      OPENCLAW_GATEWAY_BIND: lan
+      OPENCLAW_GATEWAY_PORT: ${PORT}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_USER_ID: ${TELEGRAM_USER_ID}
+      WHATSAPP_NUMBER: ${WHATSAPP_NUMBER}
+    volumes:
+      - ./config:/home/node/.openclaw
+      - ./workspace:/home/node/.openclaw/workspace
+    init: true
+    command:
+      - sh
+      - -c
+      - |
+        if [ ! -f /home/node/.openclaw/openclaw.json ]; then
+          cat > /home/node/.openclaw/openclaw.json << 'MAINEOF'
+        {
+          "auth": {
+            "profiles": {
+              "openrouter:default": {
+                "provider": "openrouter",
+                "mode": "api_key"
+              }
+        MAINEOF
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            cat >> /home/node/.openclaw/openclaw.json << 'MAINEOF'
+        ,
+              "anthropic:default": {
+                "provider": "anthropic",
+                "mode": "api_key"
+              }
+        MAINEOF
+          fi
+          if [ -n "$OPENAI_API_KEY" ]; then
+            cat >> /home/node/.openclaw/openclaw.json << 'MAINEOF'
+        ,
+              "openai:default": {
+                "provider": "openai",
+                "mode": "api_key"
+              }
+        MAINEOF
+          fi
+          cat >> /home/node/.openclaw/openclaw.json << 'MAINEOF'
+            }
+          },
+          "agents": {
+            "defaults": {
+              "maxConcurrent": 4,
+              "subagents": {
+                "maxConcurrent": 8
+              },
+              "compaction": {
+                "mode": "safeguard"
+              },
+              "workspace": "/home/node/openclaw",
+              "model": {
+                "primary": "openrouter/x-ai/grok-code-fast-1"
+        MAINEOF
+          if [ -n "$ANTHROPIC_API_KEY" ] || [ -n "$OPENAI_API_KEY" ]; then
+            cat >> /home/node/.openclaw/openclaw.json << 'MAINEOF'
+        ,
+                "fallbacks": [
+        MAINEOF
+            FALLBACKS=""
+            if [ -n "$ANTHROPIC_API_KEY" ]; then
+              FALLBACKS="$FALLBACKS\"anthropic/claude-opus-4-5\""
+            fi
+            if [ -n "$OPENAI_API_KEY" ]; then
+              [ -n "$FALLBACKS" ] && FALLBACKS="$FALLBACKS,"
+              FALLBACKS="$FALLBACKS\"openai/gpt-5.2\""
+            fi
+            echo "                  $FALLBACKS" >> /home/node/.openclaw/openclaw.json
+            cat >> /home/node/.openclaw/openclaw.json << 'MAINEOF'
+                ]
+        MAINEOF
+          fi
+          cat >> /home/node/.openclaw/openclaw.json << MAINEOF
+              },
+              "models": {
+                "x-ai/grok-4.1-fast": {
+                  "alias": "grok"
+                },
+                "anthropic/claude-opus-4-5": {
+                  "alias": "opus"
+                },
+                "openai/gpt-5.2": {
+                  "alias": "gpt"
+                }
+              }
+            }
+          },
+          "gateway": {
+            "mode": "local",
+            "auth": {
+              "mode": "token",
+              "token": "$OPENCLAW_GATEWAY_TOKEN"
+            },
+            "remote": {
+              "token": "$OPENCLAW_GATEWAY_TOKEN"
+            },
+            "controlUi": {
+              "allowInsecureAuth": true
+            }
+          }
+        MAINEOF
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] || [ -n "$WHATSAPP_NUMBER" ]; then
+            cat >> /home/node/.openclaw/openclaw.json << MAINEOF
+        ,
+          "channels": {
+        MAINEOF
+            if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+              cat >> /home/node/.openclaw/openclaw.json << MAINEOF
+            "telegram": {
+              "botToken": "$TELEGRAM_BOT_TOKEN",
+              "dmPolicy": "allowlist",
+              "allowFrom": [
+                "$TELEGRAM_USER_ID"
+              ],
+              "groupPolicy": "disabled",
+              "mediaMaxMb": 50
+            }
+        MAINEOF
+              if [ -n "$WHATSAPP_NUMBER" ]; then
+                echo "," >> /home/node/.openclaw/openclaw.json
+              fi
+            fi
+            if [ -n "$WHATSAPP_NUMBER" ]; then
+              cat >> /home/node/.openclaw/openclaw.json << MAINEOF
+            "whatsapp": {
+              "dmPolicy": "allowlist",
+              "allowFrom": [
+                "$WHATSAPP_NUMBER"
+              ],
+              "groupPolicy": "allowlist",
+              "mediaMaxMb": 50,
+              "debounceMs": 0
+            }
+        MAINEOF
+            fi
+            cat >> /home/node/.openclaw/openclaw.json << 'MAINEOF'
+          }
+        MAINEOF
+          fi
+          echo "}" >> /home/node/.openclaw/openclaw.json
+        fi
+        mkdir /home/node/.openclaw/credentials
+        chmod 700 /home/node/.openclaw /home/node/.openclaw/credentials
+        chmod 600 /home/node/.openclaw/openclaw.json
+        chown -R node:node /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.openclaw/credentials
+        APP_DIR=$$(pwd)
+        exec su node -s /bin/sh -c "cd $$APP_DIR && node dist/index.js gateway --bind lan --port $PORT"

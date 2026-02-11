@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Orchestrator — Starting...</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            max-width: 400px;
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #0657f9, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 32px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #1e293b;
+            border-top-color: #0657f9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        .status {
+            font-size: 12px;
+            color: #475569;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">⚡</div>
+        <h1>Aether Orchestrator</h1>
+        <p>Starting Docker containers and API server...</p>
+        <div class="spinner"></div>
+        <div class="status" id="status">Initializing...</div>
+    </div>
+    <script>
+        const messages = [
+            'Checking Docker daemon...',
+            'Starting OpenClaw Gateway...',
+            'Starting Aether API...',
+            'Building UI assets...',
+            'Almost ready...',
+        ];
+        let i = 0;
+        setInterval(() => {
+            document.getElementById('status').textContent = messages[i % messages.length];
+            i++;
+        }, 3000);
+    </script>
+</body>
+</html>

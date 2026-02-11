@@ -1,0 +1,59 @@
+{
+  "name": "aether-orchestrator-desktop",
+  "version": "1.0.0",
+  "description": "Aether Orchestrator — Desktop app for one-click OpenClaw agent management",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "dockerode": "^4.0.2",
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aether.orchestrator",
+    "productName": "Aether Orchestrator",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "docker-manager.js",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../docker-compose.yml",
+        "to": "docker-compose.yml"
+      },
+      {
+        "from": "../.env.template",
+        "to": ".env.template"
+      },
+      {
+        "from": "../Dockerfile",
+        "to": "Dockerfile"
+      }
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Development"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": ["nsis"]
+    }
+  }
+}

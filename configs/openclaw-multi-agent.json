@@ -1,0 +1,82 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "~/.openclaw/workspace",
+      "model": {
+        "primary": "openrouter/anthropic/claude-sonnet-4"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8,
+        "allowAgents": ["*"]
+      },
+      "compaction": {
+        "mode": "safeguard"
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "name": "Jason",
+        "default": true,
+        "workspace": "~/.openclaw/workspace",
+        "subagents": {
+          "allowAgents": ["*"]
+        }
+      },
+      {
+        "id": "researcher",
+        "name": "Researcher",
+        "workspace": "~/.openclaw/workspace-researcher",
+        "model": "openrouter/deepseek/deepseek-chat",
+        "identity": {
+          "name": "Researcher",
+          "emoji": "🔍"
+        },
+        "subagents": {
+          "allowAgents": ["*"]
+        }
+      },
+      {
+        "id": "coder",
+        "name": "Coder",
+        "workspace": "~/.openclaw/workspace-coder",
+        "model": "openrouter/anthropic/claude-sonnet-4",
+        "identity": {
+          "name": "Coder",
+          "emoji": "💻"
+        },
+        "sandbox": {
+          "mode": "all",
+          "workspaceAccess": "rw"
+        },
+        "subagents": {
+          "allowAgents": ["*"]
+        }
+      },
+      {
+        "id": "reviewer",
+        "name": "Code Reviewer",
+        "workspace": "~/.openclaw/workspace-reviewer",
+        "model": "openrouter/google/gemini-2.5-pro",
+        "identity": {
+          "name": "Reviewer",
+          "emoji": "🔎"
+        },
+        "subagents": {
+          "allowAgents": ["*"]
+        }
+      }
+    ]
+  },
+  "gateway": {
+    "mode": "local",
+    "auth": {
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto"
+  }
+}
