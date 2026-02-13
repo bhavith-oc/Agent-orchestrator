@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
 
+    # Orchestration
+    MASTER_DEPLOYMENT_ID: str = ""  # Deployment ID of the master OpenClaw container
+    UI_BASE_URL: str = "http://localhost:5173"  # Frontend URL for Telegram links
+
     # CORS
     CORS_ORIGINS: str = ""
 

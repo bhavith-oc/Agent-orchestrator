@@ -19,6 +19,9 @@ class Mission(Base):
     files_scope: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array
     git_branch: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     plan_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Task plan (parent missions)
+    source: Mapped[str] = mapped_column(String, default="manual")  # 'manual', 'telegram', 'api'
+    source_message_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Telegram msg/chat ID
+    review_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # 'pending_review', 'approved', 'changes_requested'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

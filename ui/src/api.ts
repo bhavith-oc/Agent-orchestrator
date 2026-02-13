@@ -18,13 +18,16 @@ api.interceptors.request.use((config) => {
 export interface Mission {
     id: string;
     title: string;
-    status: 'Queue' | 'Active' | 'Completed';
+    status: 'Queue' | 'Active' | 'Completed' | 'Failed';
     description: string;
     agents: string[];
     priority: 'General' | 'Urgent';
     parent_mission_id?: string;
     assigned_agent_id?: string;
     git_branch?: string;
+    source?: 'manual' | 'telegram' | 'api';
+    source_message_id?: string;
+    review_status?: string;
     subtasks?: Mission[];
 }
 
@@ -490,6 +493,7 @@ export interface OrchestratorTask {
     description: string;
     status: string;
     master_deployment_id: string;
+    mission_id: string | null;
     subtasks: OrchestratorSubtask[];
     plan: Record<string, any> | null;
     final_result: string | null;
@@ -523,5 +527,54 @@ export const fetchOrchestratorTasks = async (): Promise<OrchestratorTask[]> => {
 
 export const fetchAgentTemplates = async (): Promise<AgentTemplate[]> => {
     const response = await api.get('/orchestrate/agents');
+    return response.data;
+};
+
+// --- Team Chat API ---
+
+export interface TeamChatMessage {
+    id: string;
+    session_id: string;
+    role: string;
+    sender_name: string | null;
+    content: string;
+    created_at: string;
+}
+
+export interface TeamChatSession {
+    id: string;
+    mission_id: string;
+    created_at: string;
+}
+
+export const fetchTeamChatSessions = async (): Promise<TeamChatSession[]> => {
+    const response = await api.get('/team-chat/sessions');
+    return response.data;
+};
+
+export const fetchTeamChatMessages = async (missionId: string): Promise<TeamChatMessage[]> => {
+    const response = await api.get(`/team-chat/${missionId}/messages`);
+    return response.data;
+};
+
+export const sendTeamChatMessage = async (missionId: string, content: string, senderName: string = 'User'): Promise<TeamChatMessage> => {
+    const response = await api.post(`/team-chat/${missionId}/send`, { content, sender_name: senderName });
+    return response.data;
+};
+
+// --- Telegram Bridge API ---
+
+export const startTelegramBridge = async (deploymentId: string): Promise<{ status: string; deployment_id: string; port: number }> => {
+    const response = await api.post('/telegram-bridge/start', { deployment_id: deploymentId });
+    return response.data;
+};
+
+export const stopTelegramBridge = async (): Promise<{ status: string }> => {
+    const response = await api.post('/telegram-bridge/stop');
+    return response.data;
+};
+
+export const fetchTelegramBridgeStatus = async (): Promise<{ running: boolean; deployment_id: string | null }> => {
+    const response = await api.get('/telegram-bridge/status');
     return response.data;
 };

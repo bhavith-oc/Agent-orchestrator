@@ -27,6 +27,8 @@ class AgentResponse(BaseModel):
     worktree_path: Optional[str] = None
     git_branch: Optional[str] = None
     current_task: Optional[str] = None
+    deployment_id: Optional[str] = None
+    agent_template: Optional[str] = None
     load: Optional[float] = 0.0
     created_at: datetime
     terminated_at: Optional[datetime] = None

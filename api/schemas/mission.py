@@ -11,6 +11,8 @@ class MissionCreate(BaseModel):
     agents: List[str] = []
     parent_mission_id: Optional[str] = None
     files_scope: Optional[List[str]] = None
+    source: str = "manual"
+    source_message_id: Optional[str] = None
 
 
 class MissionUpdate(BaseModel):
@@ -20,6 +22,7 @@ class MissionUpdate(BaseModel):
     priority: Optional[str] = None
     assigned_agent_id: Optional[str] = None
     files_scope: Optional[List[str]] = None
+    review_status: Optional[str] = None
 
 
 class MissionResponse(BaseModel):
@@ -34,6 +37,9 @@ class MissionResponse(BaseModel):
     files_scope: Optional[List[str]] = None
     git_branch: Optional[str] = None
     plan_json: Optional[str] = None
+    source: str = "manual"
+    source_message_id: Optional[str] = None
+    review_status: Optional[str] = None
     created_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

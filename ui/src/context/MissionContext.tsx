@@ -31,6 +31,9 @@ export function MissionProvider({ children }: { children: ReactNode }) {
         const token = localStorage.getItem('aether_token')
         if (token) {
             refresh()
+            // Poll every 5s for real-time kanban updates from orchestration
+            const interval = setInterval(refresh, 5000)
+            return () => clearInterval(interval)
         } else {
             setLoading(false)
         }

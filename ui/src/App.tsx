@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Activity, Menu, LogOut, Plus, Rocket, Zap, FileText } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, MessagesSquare, Shield, Settings, Users, Activity, Menu, LogOut, Plus, Rocket, Zap, FileText } from 'lucide-react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './components/Login'
 import OnboardingFlow from './components/onboarding/OnboardingFlow'
@@ -12,6 +12,7 @@ import Agents from './components/Agents'
 import RemoteConfig from './components/RemoteConfig'
 import DeployAgent from './components/DeployAgent'
 import OrchestratePanel from './components/OrchestratePanel'
+import TeamChat from './components/TeamChat'
 import CreateMissionModal from './components/CreateMissionModal'
 import { MissionProvider, useMissions } from './context/MissionContext'
 import { logout as apiLogout } from './api'
@@ -128,6 +129,7 @@ function AppContent() {
                     <NavItem icon={Zap} label="Orchestrate" active={activeTab === 'orchestrate'} onClick={() => setActiveTab('orchestrate')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={MessageSquare} label="Agent Hub" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={Users} label="Agents Pool" active={activeTab === 'agents'} onClick={() => setActiveTab('agents')} collapsed={isSidebarCollapsed} />
+                    <NavItem icon={MessagesSquare} label="Team Chat" active={activeTab === 'teamchat'} onClick={() => setActiveTab('teamchat')} collapsed={isSidebarCollapsed} />
                 </nav>
 
                 <div className="shrink-0 pt-4 border-t border-border space-y-3">
@@ -178,7 +180,7 @@ function AppContent() {
                                 Live Interface
                             </div>
                             <h2 className="text-3xl font-bold font-display capitalize tracking-tight">
-                                {activeTab === 'dashboard' ? 'Strategic Overview' : activeTab === 'hub' ? 'Agent Hub' : activeTab === 'agents' ? 'Agents Pool' : activeTab === 'deploy' ? 'Deploy Agent' : activeTab === 'orchestrate' ? 'Orchestrate' : activeTab}
+                                {activeTab === 'dashboard' ? 'Strategic Overview' : activeTab === 'hub' ? 'Agent Hub' : activeTab === 'agents' ? 'Agents Pool' : activeTab === 'deploy' ? 'Deploy Agent' : activeTab === 'orchestrate' ? 'Orchestrate' : activeTab === 'teamchat' ? 'Team Chat' : activeTab}
                             </h2>
                         </div>
                     </div>
@@ -223,6 +225,7 @@ function AppContent() {
                             {activeTab === 'agents' && <Agents />}
                             {activeTab === 'deploy' && <DeployAgent />}
                             {activeTab === 'orchestrate' && <OrchestratePanel />}
+                            {activeTab === 'teamchat' && <TeamChat />}
                             {activeTab === 'settings' && <RemoteConfig />}
                         </motion.div>
                     </AnimatePresence>

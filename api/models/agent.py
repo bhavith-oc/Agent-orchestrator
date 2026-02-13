@@ -20,6 +20,8 @@ class Agent(Base):
     worktree_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     git_branch: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     current_task: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    deployment_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # OpenClaw container deployment ID
+    agent_template: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # e.g. 'python-backend'
     load: Mapped[Optional[float]] = mapped_column(Float, default=0.0)
     retry_count: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

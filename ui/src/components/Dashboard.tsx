@@ -20,12 +20,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { motion } from 'framer-motion'
-import { GripVertical, Trash2, Pencil, X, Check, Loader2, AlertTriangle } from 'lucide-react'
+import { GripVertical, Trash2, Pencil, X, Check, Loader2, AlertTriangle, Send, CheckCircle2, Clock, MessageCircleWarning } from 'lucide-react'
 import { Mission } from '../api'
 import { useMissions } from '../context/MissionContext'
 
 // --- Types ---
-type Status = 'Queue' | 'Active' | 'Completed'
+type Status = 'Queue' | 'Active' | 'Completed' | 'Failed'
 
 // --- Sortable Item Component ---
 function SortableItem({ mission, onDelete, onEdit }: { mission: Mission, onDelete: (id: string) => void, onEdit: (id: string) => void }) {
@@ -54,13 +54,28 @@ function SortableItem({ mission, onDelete, onEdit }: { mission: Mission, onDelet
             <div className={`absolute top-0 right-0 w-24 h-24 blur-2xl rounded-full -mr-12 -mt-12 transition-colors pointer-events-none ${mission.priority === 'Urgent' ? 'bg-red-500/5 group-hover:bg-red-500/10' : 'bg-primary/5 group-hover:bg-primary/10'}`} />
 
             <div className="flex items-center justify-between mb-3 relative z-10">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[9px] font-bold text-primary tracking-widest uppercase">ID_{mission.id}</span>
                     {mission.priority === 'Urgent' && (
                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">
                             <AlertTriangle className="w-2.5 h-2.5 text-red-500" />
                             <span className="text-[8px] font-bold text-red-400 uppercase tracking-wide">Urgent</span>
                         </div>
+                    )}
+                    {mission.source === 'telegram' && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">
+                            <Send className="w-2.5 h-2.5 text-purple-400" />
+                            <span className="text-[8px] font-bold text-purple-400 uppercase tracking-wide">Telegram</span>
+                        </div>
+                    )}
+                    {mission.review_status === 'approved' && (
+                        <span title="Approved"><CheckCircle2 className="w-3 h-3 text-green-400" /></span>
+                    )}
+                    {mission.review_status === 'pending_review' && (
+                        <span title="Pending Review"><Clock className="w-3 h-3 text-yellow-400" /></span>
+                    )}
+                    {mission.review_status === 'changes_requested' && (
+                        <span title="Changes Requested"><MessageCircleWarning className="w-3 h-3 text-orange-400" /></span>
                     )}
                 </div>
 
@@ -196,7 +211,7 @@ export default function Dashboard() {
         if (!mission) return
 
         // If dropped on a column container
-        if (['Queue', 'Active', 'Completed'].includes(overId as string)) {
+        if (['Queue', 'Active', 'Completed', 'Failed'].includes(overId as string)) {
             if (mission.status !== overId) {
                 await editMission(activeId as string, { status: overId as any })
             }
@@ -246,10 +261,11 @@ export default function Dashboard() {
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
             >
-                <div className="grid grid-cols-3 gap-6 h-full pb-4">
+                <div className="grid grid-cols-4 gap-5 h-full pb-4">
                     <Column id="Queue" title="Mission Queue" missions={getMissionsByStatus('Queue')} onDelete={handleDelete} onEdit={handleEditStart} />
                     <Column id="Active" title="Active Operations" missions={getMissionsByStatus('Active')} onDelete={handleDelete} onEdit={handleEditStart} />
                     <Column id="Completed" title="Mission Debrief" missions={getMissionsByStatus('Completed')} onDelete={handleDelete} onEdit={handleEditStart} />
+                    <Column id="Failed" title="Failed" missions={getMissionsByStatus('Failed')} onDelete={handleDelete} onEdit={handleEditStart} />
                 </div>
 
                 <DragOverlay>
