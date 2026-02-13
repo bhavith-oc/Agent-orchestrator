@@ -336,8 +336,7 @@ export default function Chat() {
                     )}
                 </div>
 
-                {/* Neural Links — deployed containers + agents */}
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest px-2">Neural Links</h3>
+                {/* Deployed containers + agents */}
                 <div className="flex flex-col gap-2">
                     {/* Deployed containers */}
                     {runningDeployments.map((d) => (
@@ -356,8 +355,8 @@ export default function Chat() {
                             </div>
                             <p className="text-[10px] text-slate-500 font-medium">
                                 {deployChatStatus.connected && deployChatStatus.deployment_id === d.deployment_id
-                                    ? `Connected · ${deployChatStatus.session_name}`
-                                    : `Port ${d.port} · Running`}
+                                    ? 'Connected'
+                                    : 'Running'}
                             </p>
                         </button>
                     ))}

@@ -147,6 +147,10 @@ export const fetchAgents = async (): Promise<AgentInfo[]> => {
     return response.data;
 };
 
+export const deleteAgent = async (agentId: string): Promise<void> => {
+    await api.delete(`/agents/${agentId}`);
+};
+
 export const fetchAgent = async (id: string): Promise<AgentInfo> => {
     const response = await api.get(`/agents/${id}`);
     return response.data;
@@ -463,5 +467,61 @@ export const fetchDeployChatHistory = async (): Promise<Message[]> => {
 
 export const sendDeployChatMessage = async (content: string): Promise<Message> => {
     const response = await api.post('/deploy-chat/send', { content });
+    return response.data;
+};
+
+// --- Orchestration API ---
+
+export interface OrchestratorSubtask {
+    id: string;
+    description: string;
+    agent_type: string;
+    depends_on: string[];
+    status: string;
+    result: string | null;
+    error: string | null;
+    deployment_id: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+}
+
+export interface OrchestratorTask {
+    id: string;
+    description: string;
+    status: string;
+    master_deployment_id: string;
+    subtasks: OrchestratorSubtask[];
+    plan: Record<string, any> | null;
+    final_result: string | null;
+    error: string | null;
+    logs: string[];
+    created_at: string;
+    completed_at: string | null;
+}
+
+export interface AgentTemplate {
+    type: string;
+    name: string;
+    description: string;
+    tags: string[];
+}
+
+export const submitOrchestratorTask = async (description: string, masterDeploymentId: string): Promise<OrchestratorTask> => {
+    const response = await api.post('/orchestrate/task', { description, master_deployment_id: masterDeploymentId });
+    return response.data;
+};
+
+export const fetchOrchestratorTask = async (taskId: string): Promise<OrchestratorTask> => {
+    const response = await api.get(`/orchestrate/task/${taskId}`);
+    return response.data;
+};
+
+export const fetchOrchestratorTasks = async (): Promise<OrchestratorTask[]> => {
+    const response = await api.get('/orchestrate/tasks');
+    return response.data;
+};
+
+export const fetchAgentTemplates = async (): Promise<AgentTemplate[]> => {
+    const response = await api.get('/orchestrate/agents');
     return response.data;
 };

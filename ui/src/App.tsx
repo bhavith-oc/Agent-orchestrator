@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Activity, Menu, LogOut, Plus, Rocket } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Menu, LogOut, Plus, Rocket } from 'lucide-react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './components/Login'
 import OnboardingFlow from './components/onboarding/OnboardingFlow'
@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Dashboard from './components/Dashboard'
 import Chat from './components/Chat'
 import Agents from './components/Agents'
-import ComingSoon from './components/ComingSoon'
 import RemoteConfig from './components/RemoteConfig'
 import DeployAgent from './components/DeployAgent'
 import CreateMissionModal from './components/CreateMissionModal'
@@ -127,25 +126,9 @@ function AppContent() {
                     <NavItem icon={LayoutDashboard} label="Mission Board" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={MessageSquare} label="Agent Hub" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={Users} label="Agents Pool" active={activeTab === 'agents'} onClick={() => setActiveTab('agents')} collapsed={isSidebarCollapsed} />
-                    <NavItem icon={Activity} label="System Metrics" active={activeTab === 'metrics'} onClick={() => setActiveTab('metrics')} collapsed={isSidebarCollapsed} />
                 </nav>
 
                 <div className="mt-auto pt-4 border-t border-border space-y-4">
-                    {!isSidebarCollapsed ? (
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20">
-                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">System Load</p>
-                            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-primary w-[65%]" />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex justify-center">
-                            <div className="w-1.5 h-12 bg-slate-800 rounded-full overflow-hidden relative">
-                                <div className="absolute bottom-0 w-full h-[65%] bg-primary" />
-                            </div>
-                        </div>
-                    )}
-
                     <NavItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} collapsed={isSidebarCollapsed} />
                     <button
                         onClick={handleLogout}
@@ -180,7 +163,7 @@ function AppContent() {
                                 Live Interface
                             </div>
                             <h2 className="text-3xl font-bold font-display capitalize tracking-tight">
-                                {activeTab === 'dashboard' ? 'Strategic Overview' : activeTab === 'hub' ? 'Neural Link' : activeTab}
+                                {activeTab === 'dashboard' ? 'Strategic Overview' : activeTab === 'hub' ? 'Agent Hub' : activeTab === 'agents' ? 'Agents Pool' : activeTab === 'deploy' ? 'Deploy Agent' : activeTab}
                             </h2>
                         </div>
                     </div>
@@ -223,7 +206,6 @@ function AppContent() {
                             {activeTab === 'dashboard' && <Dashboard />}
                             {activeTab === 'hub' && <Chat />}
                             {activeTab === 'agents' && <Agents />}
-                            {activeTab === 'metrics' && <ComingSoon title="System Metrics" description="Real-time visualization of neural network performance and resource allocation is currently under development." />}
                             {activeTab === 'deploy' && <DeployAgent />}
                             {activeTab === 'settings' && <RemoteConfig />}
                         </motion.div>

@@ -8,7 +8,7 @@ import uvicorn
 
 from config import settings
 from database import init_db
-from routers import auth, agents, missions, chat, metrics, remote, deploy, deploy_chat
+from routers import auth, agents, missions, chat, metrics, remote, deploy, deploy_chat, orchestrate
 from services.jason import jason_orchestrator
 from services.remote_jason import remote_jason_manager
 
@@ -65,6 +65,8 @@ async def lifespan(app: FastAPI):
     await remote_jason_manager.disconnect()
     from services.deployment_chat import deployment_chat_manager
     await deployment_chat_manager.disconnect()
+    from services.orchestrator import orchestrator as orch
+    await orch.cleanup_connections()
 
 
 app = FastAPI(title="Aether Orchestrator API", lifespan=lifespan)
@@ -96,6 +98,7 @@ app.include_router(metrics.router)
 app.include_router(remote.router)
 app.include_router(deploy.router)
 app.include_router(deploy_chat.router)
+app.include_router(orchestrate.router)
 
 
 @app.get("/api/health")

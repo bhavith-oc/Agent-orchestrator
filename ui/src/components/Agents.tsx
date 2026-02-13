@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Activity, Cpu, Clock, Loader2, RefreshCw, Rocket, Globe } from 'lucide-react'
-import { fetchAgents, fetchDeployList, fetchRemoteStatus, AgentInfo, DeploymentInfo, RemoteStatus } from '../api'
+import { Activity, Cpu, Clock, Loader2, RefreshCw, Rocket, Globe, Trash2 } from 'lucide-react'
+import { fetchAgents, fetchDeployList, fetchRemoteStatus, deleteAgent, AgentInfo, DeploymentInfo, RemoteStatus } from '../api'
 
 export default function Agents() {
     const [agents, setAgents] = useState<AgentInfo[]>([])
@@ -213,9 +213,30 @@ export default function Agents() {
                                     <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{agent.type === 'master' ? 'Master Orchestrator' : agent.model || 'Sub-Agent'}</p>
                                 </div>
                             </div>
-                            <div className={`px-2 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide flex items-center gap-1.5 ${getStatusStyle(agent.status)}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${getDotStyle(agent.status)}`} />
-                                {agent.status}
+                            <div className="flex items-center gap-2">
+                                <div className={`px-2 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide flex items-center gap-1.5 ${getStatusStyle(agent.status)}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${getDotStyle(agent.status)}`} />
+                                    {agent.status}
+                                </div>
+                                {agent.type !== 'master' && (
+                                    <button
+                                        onClick={async (e) => {
+                                            e.stopPropagation()
+                                            if (confirm(`Remove agent "${agent.name}"?`)) {
+                                                try {
+                                                    await deleteAgent(agent.id)
+                                                    loadAgents()
+                                                } catch (err) {
+                                                    console.error('Failed to delete agent', err)
+                                                }
+                                            }
+                                        }}
+                                        className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Remove agent"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
                             </div>
                         </div>
 
