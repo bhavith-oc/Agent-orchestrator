@@ -23,8 +23,7 @@ deployments/
 .pids/
 *.log
 
-# ── Context & Helper scripts (internal docs) ────
-/context/
+# ── Helper scripts (internal docs) ────
 helper-function/
 helper-functions/
 
