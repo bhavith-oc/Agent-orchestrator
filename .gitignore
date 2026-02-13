@@ -24,7 +24,7 @@ deployments/
 *.log
 
 # ── Context & Helper scripts (internal docs) ────
-context/
+/context/
 helper-function/
 helper-functions/
 

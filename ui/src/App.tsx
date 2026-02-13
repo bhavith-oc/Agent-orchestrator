@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Menu, LogOut, Plus, Rocket, Zap } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Activity, Menu, LogOut, Plus, Rocket, Zap, FileText } from 'lucide-react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './components/Login'
 import OnboardingFlow from './components/onboarding/OnboardingFlow'
@@ -122,7 +122,7 @@ function AppContent() {
                     )}
                 </div>
 
-                <nav className="flex flex-col gap-2 flex-1 mt-4">
+                <nav className="flex flex-col gap-2 flex-1 mt-4 overflow-y-auto scrollbar-hide min-h-0">
                     <NavItem icon={Rocket} label="Deploy Agent" active={activeTab === 'deploy'} onClick={() => setActiveTab('deploy')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={LayoutDashboard} label="Mission Board" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={Zap} label="Orchestrate" active={activeTab === 'orchestrate'} onClick={() => setActiveTab('orchestrate')} collapsed={isSidebarCollapsed} />
@@ -130,7 +130,7 @@ function AppContent() {
                     <NavItem icon={Users} label="Agents Pool" active={activeTab === 'agents'} onClick={() => setActiveTab('agents')} collapsed={isSidebarCollapsed} />
                 </nav>
 
-                <div className="mt-auto pt-4 border-t border-border space-y-4">
+                <div className="shrink-0 pt-4 border-t border-border space-y-3">
                     <NavItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} collapsed={isSidebarCollapsed} />
                     <button
                         onClick={handleLogout}
@@ -140,6 +140,19 @@ function AppContent() {
                         <LogOut className="w-5 h-5 shrink-0" />
                         {!isSidebarCollapsed && <span className="font-bold text-sm tracking-tight whitespace-nowrap">Logout</span>}
                     </button>
+                    <a
+                        href="/docs.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all shadow-[0_0_15px_rgba(6,87,249,0.2)] hover:shadow-[0_0_25px_rgba(6,87,249,0.4)]",
+                            isSidebarCollapsed ? "justify-center" : ""
+                        )}
+                        title={isSidebarCollapsed ? "Documentation" : undefined}
+                    >
+                        <FileText className="w-4 h-4 shrink-0" />
+                        {!isSidebarCollapsed && <span>Docs</span>}
+                    </a>
                 </div>
             </motion.aside>
 

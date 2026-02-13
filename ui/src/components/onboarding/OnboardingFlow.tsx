@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
-import { ArrowRight, Bot, Check, Terminal, Loader2, MessageSquare } from 'lucide-react'
+import { ArrowRight, Bot, Check, Terminal, Loader2, MessageSquare, LayoutDashboard } from 'lucide-react'
 import Visuals from './Visuals'
 import InstallationView from './InstallationView'
 import ConfigForm, { BotConfig } from './ConfigForm'
@@ -170,12 +170,22 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {/* Right Panel - Logic */}
             {phase !== SetupPhase.COMPLETE && (
                 <div className="lg:w-1/2 w-full h-full bg-dark-900 flex flex-col relative z-10 border-l border-gray-800 shadow-2xl">
-                    {/* Header / Brand on mobile */}
-                    <div className="p-6 lg:hidden">
-                        <h1 className="text-xl font-bold text-white">Aether Orchestrator</h1>
+                    {/* Top bar with Dashboard shortcut */}
+                    <div className="shrink-0 flex items-center justify-between p-6">
+                        <h1 className="text-xl font-bold text-white lg:hidden">Aether Orchestrator</h1>
+                        <div className="hidden lg:block" />
+                        {phase === SetupPhase.CONFIGURATION && (
+                            <button
+                                onClick={() => onComplete()}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-gray-300 hover:text-white text-sm font-medium transition-all"
+                            >
+                                <LayoutDashboard size={16} />
+                                Dashboard
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex-1 flex flex-col justify-center px-8 lg:px-20 py-12">
+                    <div className="flex-1 flex flex-col justify-center px-8 lg:px-20 py-12 overflow-y-auto min-h-0">
 
                         {/* View 1: Auth */}
                         {phase === SetupPhase.AUTH && (
@@ -248,14 +258,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-6 border-t border-gray-800 flex items-center justify-between">
+                    <div className="shrink-0 p-6 border-t border-gray-800 flex items-center gap-4">
+                        <a
+                            href="/docs.html"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-[0_0_12px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+                        >
+                            Docs
+                        </a>
                         <div>
                             <p className="text-xs text-gray-600 font-mono">AETHER ORCHESTRATOR</p>
                             <p className="text-xs text-gray-700 font-mono mt-1">Powered by One Convergence Devices</p>
                         </div>
-                        <a href="/docs.html" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-brand-400 font-mono transition-colors">
-                            Docs
-                        </a>
                     </div>
                 </div>
             )}

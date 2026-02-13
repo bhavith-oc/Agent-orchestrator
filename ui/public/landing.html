@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aether Orchestrator — Autonomous Agent Infrastructure</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #06080d;
+            --bg-card: #0d1017;
+            --border: #1a1f2e;
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --text-dim: #475569;
+            --primary: #0657f9;
+            --primary-glow: rgba(6, 87, 249, 0.15);
+            --green: #22c55e;
+            --cyan: #06b6d4;
+            --purple: #a855f7;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(6, 8, 13, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+        }
+        nav .inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 64px;
+        }
+        nav .logo {
+            font-weight: 900; font-size: 1.1rem; letter-spacing: -0.03em;
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: var(--text);
+        }
+        nav .logo .icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(6,87,249,0.4);
+        }
+        nav .logo .icon svg { width: 18px; height: 18px; fill: white; }
+        nav .links { display: flex; gap: 2rem; align-items: center; }
+        nav .links a {
+            color: var(--text-muted); text-decoration: none;
+            font-size: 0.85rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+        nav .links a:hover { color: var(--text); }
+        nav .try-btn {
+            font-size: 0.85rem; color: white; font-weight: 700;
+            background: var(--primary);
+            padding: 8px 20px; border-radius: 10px;
+            text-decoration: none;
+            box-shadow: 0 0 20px rgba(6,87,249,0.3);
+            transition: all 0.2s;
+        }
+        nav .try-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 30px rgba(6,87,249,0.5);
+        }
+
+        /* ── HERO ── */
+        .hero {
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center; padding: 120px 2rem 80px;
+            position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute;
+            width: 900px; height: 900px;
+            background: radial-gradient(circle, rgba(6,87,249,0.1) 0%, transparent 60%);
+            top: -200px; left: 50%; transform: translateX(-50%);
+            pointer-events: none;
+        }
+        .hero::after {
+            content: ''; position: absolute;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 60%);
+            bottom: -100px; right: -100px;
+            pointer-events: none;
+        }
+        .hero .badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 16px; border-radius: 999px;
+            background: var(--primary-glow);
+            border: 1px solid rgba(6,87,249,0.25);
+            color: #93b4fd; font-size: 0.75rem; font-weight: 600;
+            letter-spacing: 0.05em; text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
+        .hero .badge .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .hero h1 {
+            font-size: clamp(3rem, 7vw, 5.5rem);
+            font-weight: 900; letter-spacing: -0.05em;
+            line-height: 1.05; margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero .tagline {
+            font-size: 1.25rem; color: var(--text-muted);
+            max-width: 680px; margin-bottom: 3rem; line-height: 1.8;
+        }
+        .hero .cta-row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+        .hero .cta-row a {
+            padding: 14px 36px; border-radius: 14px;
+            font-weight: 700; font-size: 1rem;
+            text-decoration: none; transition: all 0.25s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .hero .cta-row .primary-btn {
+            background: var(--primary); color: white;
+            box-shadow: 0 0 40px rgba(6,87,249,0.35);
+        }
+        .hero .cta-row .primary-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 60px rgba(6,87,249,0.5);
+        }
+        .hero .cta-row .ghost-btn {
+            border: 1px solid var(--border); color: var(--text-muted);
+        }
+        .hero .cta-row .ghost-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+        /* ── FEATURES ── */
+        .features {
+            max-width: 1200px; margin: 0 auto; padding: 100px 2rem;
+        }
+        .features .section-label {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.15em; color: var(--primary); margin-bottom: 0.75rem;
+            text-align: center;
+        }
+        .features h2 {
+            font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em;
+            text-align: center; margin-bottom: 1rem;
+        }
+        .features .subtitle {
+            font-size: 1rem; color: var(--text-muted); max-width: 600px;
+            margin: 0 auto 4rem; text-align: center;
+        }
+        .feature-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+        .feature-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 2.5rem;
+            transition: all 0.3s; position: relative; overflow: hidden;
+        }
+        .feature-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 2px; background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .feature-card:hover { border-color: rgba(6,87,249,0.3); transform: translateY(-4px); }
+        .feature-card:hover::before { opacity: 1; }
+        .feature-card .icon-wrap {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1.25rem; font-size: 1.4rem;
+        }
+        .feature-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .feature-card p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.7; }
+
+        /* ── STATS ── */
+        .stats {
+            max-width: 1200px; margin: 0 auto; padding: 60px 2rem;
+        }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem;
+        }
+        .stat-item { text-align: center; }
+        .stat-item .num {
+            font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--primary), var(--cyan));
+            background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .stat-item .label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* ── TECH ── */
+        .tech {
+            max-width: 1200px; margin: 0 auto; padding: 100px 2rem;
+        }
+        .tech .section-label {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.15em; color: var(--primary); margin-bottom: 0.75rem;
+            text-align: center;
+        }
+        .tech h2 {
+            font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em;
+            text-align: center; margin-bottom: 3rem;
+        }
+        .tech-pills {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem;
+        }
+        .tech-pill {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 999px; padding: 10px 22px;
+            font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        .tech-pill:hover { border-color: rgba(6,87,249,0.3); color: var(--text); }
+
+        /* ── CTA SECTION ── */
+        .cta-section {
+            max-width: 800px; margin: 0 auto; padding: 100px 2rem;
+            text-align: center;
+        }
+        .cta-section h2 {
+            font-size: 2.8rem; font-weight: 900; letter-spacing: -0.04em;
+            margin-bottom: 1rem;
+        }
+        .cta-section p {
+            font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem;
+        }
+        .cta-section .big-btn {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 18px 48px; border-radius: 16px;
+            background: var(--primary); color: white;
+            font-weight: 800; font-size: 1.1rem;
+            text-decoration: none;
+            box-shadow: 0 0 50px rgba(6,87,249,0.4);
+            transition: all 0.3s;
+        }
+        .cta-section .big-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 0 70px rgba(6,87,249,0.6);
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 2rem; text-align: center;
+            color: var(--text-dim); font-size: 0.8rem;
+        }
+        footer a { color: var(--text-muted); text-decoration: none; }
+        footer a:hover { color: var(--text); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            nav .links { display: none; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── GRID BACKGROUND ── */
+        .grid-bg {
+            position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+        }
+        .grid-bg::before {
+            content: '';
+            position: absolute; inset: -50%;
+            background-image:
+                linear-gradient(rgba(6,87,249,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(6,87,249,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            transform: perspective(500px) rotateX(60deg);
+            transform-origin: center top;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <div class="inner">
+        <a href="/" class="logo">
+            <div class="icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            AETHER
+        </a>
+        <div class="links">
+            <a href="#features">Features</a>
+            <a href="#tech">Tech Stack</a>
+            <a href="/docs.html">Documentation</a>
+            <a href="/app" class="try-btn">Try the Platform &rarr;</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="grid-bg"></div>
+    <div class="badge"><span class="dot"></span> Live &mdash; v0.1.0</div>
+    <h1>Autonomous Agent<br/>Infrastructure</h1>
+    <p class="tagline">
+        Deploy, orchestrate, and chat with AI agents in one click.
+        Powered by OpenClaw, Docker, and a modern React + FastAPI stack.
+    </p>
+    <div class="cta-row">
+        <a href="/app" class="primary-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Try the Platform
+        </a>
+        <a href="/docs.html" class="ghost-btn">Read the Docs &rarr;</a>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+    <div class="section-label">Capabilities</div>
+    <h2>Everything You Need</h2>
+    <p class="subtitle">From deployment to conversation — a complete platform for autonomous AI agents.</p>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="icon-wrap" style="background:rgba(6,87,249,0.1); color:#60a5fa;">&#9889;</div>
+            <h3>One-Click Deploy</h3>
+            <p>Enter your API key, click deploy. A Docker container launches with your configured OpenClaw agent in under 60 seconds. Port and gateway token auto-generated.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon-wrap" style="background:rgba(34,197,94,0.1); color:#86efac;">&#128172;</div>
+            <h3>Real-Time Chat</h3>
+            <p>WebSocket-powered conversation with your deployed agents. Full chat history, session management, and streaming responses via the Agent Hub.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon-wrap" style="background:rgba(168,85,247,0.1); color:#c4b5fd;">&#129302;</div>
+            <h3>Multi-Agent Orchestration</h3>
+            <p>Jason master agent decomposes tasks into sub-missions. Agents work in parallel with dependency tracking and real-time progress updates.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon-wrap" style="background:rgba(6,182,212,0.1); color:#67e8f9;">&#128242;</div>
+            <h3>Telegram Integration</h3>
+            <p>Connect a Telegram bot to your agent. Chat from anywhere with full media support, allowlist-based access control, and streaming responses.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon-wrap" style="background:rgba(245,158,11,0.1); color:#fbbf24;">&#128202;</div>
+            <h3>Mission Board</h3>
+            <p>Kanban-style mission tracking with drag-and-drop. Create, assign, and monitor tasks across your agent fleet with priority management.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon-wrap" style="background:rgba(239,68,68,0.1); color:#fca5a5;">&#128274;</div>
+            <h3>Secure by Default</h3>
+            <p>Token-based gateway authentication, CORS protection, HTTPS with auto-renewing Let's Encrypt certificates, and configurable access control.</p>
+        </div>
+    </div>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="num">&lt;60s</div>
+            <div class="label">Deploy Time</div>
+        </div>
+        <div class="stat-item">
+            <div class="num">10+</div>
+            <div class="label">LLM Models</div>
+        </div>
+        <div class="stat-item">
+            <div class="num">REST+WS</div>
+            <div class="label">API Protocol</div>
+        </div>
+        <div class="stat-item">
+            <div class="num">100%</div>
+            <div class="label">Open Source</div>
+        </div>
+    </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="tech" id="tech">
+    <div class="section-label">Built With</div>
+    <h2>Modern Tech Stack</h2>
+    <div class="tech-pills">
+        <span class="tech-pill">React 19</span>
+        <span class="tech-pill">TypeScript</span>
+        <span class="tech-pill">Vite</span>
+        <span class="tech-pill">Tailwind CSS v4</span>
+        <span class="tech-pill">Python 3.12</span>
+        <span class="tech-pill">FastAPI</span>
+        <span class="tech-pill">SQLAlchemy</span>
+        <span class="tech-pill">Docker</span>
+        <span class="tech-pill">WebSocket</span>
+        <span class="tech-pill">OpenRouter</span>
+        <span class="tech-pill">OpenClaw</span>
+        <span class="tech-pill">Nginx</span>
+        <span class="tech-pill">Let's Encrypt</span>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+    <h2>Ready to Deploy?</h2>
+    <p>Get your autonomous AI agent running in under a minute. No complex setup required.</p>
+    <a href="/app" class="big-btn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+        Launch Platform
+    </a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <p style="margin-bottom:0.5rem;"><strong>Aether Orchestrator</strong></p>
+    <p>Powered by One Convergence Devices &mdash; <a href="/docs.html">Documentation</a> &middot; <a href="/app">Platform</a></p>
+</footer>
+
+</body>
+</html>

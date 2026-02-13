@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
 
+    # CORS
+    CORS_ORIGINS: str = ""
+
     # Monitoring
     POLL_INTERVAL_SECONDS: float = 2.0
 

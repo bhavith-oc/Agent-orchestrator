@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Aether Orchestrator API", lifespan=lifespan)
 
 # Configure CORS — set CORS_ORIGINS env var for VPS (comma-separated)
-_cors_env = os.getenv("CORS_ORIGINS", "")
+_cors_env = settings.CORS_ORIGINS
 origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else [
     "http://localhost:5173",
     "http://localhost:5174",

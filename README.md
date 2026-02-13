@@ -74,7 +74,25 @@ npm run dev
 
 Frontend runs at `http://localhost:5173`.
 
-### 4. Deploy an Agent
+### 4. VPS / Production Setup
+
+For VPS deployment with a custom domain, SSL, and Nginx reverse proxy:
+
+```bash
+# Run the automated setup script
+bash setup.sh
+```
+
+This configures:
+- **Nginx** reverse proxy (port 80/443)
+- **Let's Encrypt** SSL via Certbot (auto-renewing)
+- **systemd** services for auto-restart on reboot
+- **Landing page** at `https://your-domain/`
+- **Platform** at `https://your-domain/app`
+- **API** at `https://your-domain/api/`
+- **Docs** at `https://your-domain/docs.html`
+
+### 5. Deploy an Agent
 
 Open the UI → follow the onboarding flow → enter your API key → click Deploy. The system will:
 1. Generate a unique port and gateway token
@@ -199,6 +217,7 @@ window.__AETHER_LOGOUT__()
 |----------|----------|-------------|
 | `OPENROUTER_API_KEY` | Yes | OpenRouter API key for LLM access |
 | `SECRET_KEY` | Yes | JWT signing secret (change in production) |
+| `CORS_ORIGINS` | No | Comma-separated allowed origins (e.g. `https://agent.virtualgpt.org`) |
 | `REMOTE_JASON_URL` | No | Remote OpenClaw WebSocket URL |
 | `REMOTE_JASON_TOKEN` | No | Remote OpenClaw gateway token |
 | `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
@@ -208,6 +227,7 @@ window.__AETHER_LOGOUT__()
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `VITE_API_URL` | No | Backend API URL (e.g. `https://agent.virtualgpt.org/api`) |
 | `VITE_LEGACY_LOGIN` | No | Set `true` for username/password login |
 
 ---
@@ -220,6 +240,54 @@ window.__AETHER_LOGOUT__()
 | [SETUP.md](./SETUP.md) | Detailed installation and configuration guide |
 | [ROADMAP.md](./ROADMAP.md) | Current state, planned features, milestones |
 | [context/](./context/) | Design documents, bug fixes, feature documentation |
+
+---
+
+## URL Structure (Production)
+
+| URL | Description |
+|-----|-------------|
+| `https://agent.virtualgpt.org/` | Landing page with docs and "Try the Platform" CTA |
+| `https://agent.virtualgpt.org/app` | Main platform (onboarding → dashboard) |
+| `https://agent.virtualgpt.org/docs.html` | Full technical documentation |
+| `https://agent.virtualgpt.org/api/` | Backend API (proxied via Nginx) |
+| `https://agent.virtualgpt.org/api/docs` | FastAPI auto-generated Swagger docs |
+
+---
+
+## Telegram Integration
+
+When deploying an agent with Telegram credentials:
+
+1. Provide `TELEGRAM_BOT_TOKEN` (from @BotFather) and `TELEGRAM_USER_ID`
+2. The docker-compose template auto-generates `openclaw.json` with:
+   - `channels.telegram` config (botToken, allowFrom, dmPolicy)
+   - `plugins.entries.telegram.enabled: true` (auto-enabled by OpenClaw)
+3. On container start, OpenClaw runs its "doctor" which auto-enables the Telegram plugin
+4. The `[telegram] starting provider` log confirms successful connection
+
+> **Note:** The initial log message "Telegram configured, not enabled yet" is normal — OpenClaw auto-enables it during startup.
+
+---
+
+## Infrastructure
+
+### systemd Services
+
+| Service | Description | Command |
+|---------|-------------|--------|
+| `aether-backend` | FastAPI on port 8000 | `systemctl restart aether-backend` |
+| `aether-frontend` | Vite on port 5173 | `systemctl restart aether-frontend` |
+| `nginx` | Reverse proxy + SSL | `systemctl reload nginx` |
+
+### Nginx Config
+
+Location: `/etc/nginx/sites-available/agent.virtualgpt.org`
+
+- `= /` → Landing page (`landing.html`)
+- `/app` → React app (Vite dev server)
+- `/api/` → FastAPI backend
+- SSL via Let's Encrypt (auto-renew via Certbot timer)
 
 ---
 

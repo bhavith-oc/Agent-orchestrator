@@ -42,10 +42,22 @@ mkdir -p "$PID_DIR"
 
 # ── Detect VPS IP ────────────────────────────────────────────────
 get_public_ip() {
-    curl -s --max-time 5 ifconfig.me 2>/dev/null || \
-    curl -s --max-time 5 icanhazip.com 2>/dev/null || \
-    hostname -I 2>/dev/null | awk '{print $1}' || \
-    echo "localhost"
+    local ip
+    ip=$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || \
+         curl -4 -s --max-time 5 icanhazip.com 2>/dev/null || \
+         hostname -I 2>/dev/null | awk '{print $1}' || \
+         echo "localhost")
+    echo "$ip"
+}
+
+# Format IP for URLs (wrap IPv6 in brackets)
+format_ip_for_url() {
+    local ip="$1"
+    if [[ "$ip" == *:* ]]; then
+        echo "[$ip]"
+    else
+        echo "$ip"
+    fi
 }
 
 # ═════════════════════════════════════════════════════════════════
@@ -229,6 +241,7 @@ do_configure() {
     step "Configuring Environment"
 
     VPS_IP=$(get_public_ip)
+    VPS_IP_URL=$(format_ip_for_url "$VPS_IP")
     IS_VPS=false
     if [ "$VPS_IP" != "localhost" ] && [ "$VPS_IP" != "127.0.0.1" ]; then
         IS_VPS=true
@@ -257,7 +270,7 @@ do_configure() {
 
         # Set CORS for VPS
         if [ "$IS_VPS" = true ]; then
-            sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=http://$VPS_IP:5173,http://$VPS_IP:3000|" "$API_DIR/.env"
+            sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=http://$VPS_IP_URL:5173,http://$VPS_IP_URL:3000|" "$API_DIR/.env"
         fi
 
         success "Backend .env created"
@@ -272,7 +285,7 @@ do_configure() {
 
         # Set API URL for VPS
         if [ "$IS_VPS" = true ]; then
-            sed -i "s|^VITE_API_URL=.*|VITE_API_URL=http://$VPS_IP:8000/api|" "$UI_DIR/.env"
+            sed -i "s|^VITE_API_URL=.*|VITE_API_URL=http://$VPS_IP_URL:8000/api|" "$UI_DIR/.env"
         fi
 
         success "Frontend .env created"
@@ -288,6 +301,7 @@ do_start() {
     step "Starting Aether Orchestrator"
 
     VPS_IP=$(get_public_ip)
+    VPS_IP_URL=$(format_ip_for_url "$VPS_IP")
 
     # ── Backend ──────────────────────────────────────────────────
     info "Starting backend API server..."
@@ -353,10 +367,10 @@ do_start() {
     echo -e "${BOLD}═══════════════════════════════════════════════════${NC}"
     echo ""
     if [ "$VPS_IP" != "localhost" ] && [ "$VPS_IP" != "127.0.0.1" ]; then
-        echo -e "  ${BOLD}Frontend:${NC}  http://$VPS_IP:5173"
-        echo -e "  ${BOLD}Backend:${NC}   http://$VPS_IP:8000"
-        echo -e "  ${BOLD}API Docs:${NC}  http://$VPS_IP:8000/docs"
-        echo -e "  ${BOLD}Docs Page:${NC} http://$VPS_IP:5173/docs.html"
+        echo -e "  ${BOLD}Frontend:${NC}  http://$VPS_IP_URL:5173"
+        echo -e "  ${BOLD}Backend:${NC}   http://$VPS_IP_URL:8000"
+        echo -e "  ${BOLD}API Docs:${NC}  http://$VPS_IP_URL:8000/docs"
+        echo -e "  ${BOLD}Docs Page:${NC} http://$VPS_IP_URL:5173/docs.html"
     else
         echo -e "  ${BOLD}Frontend:${NC}  http://localhost:5173"
         echo -e "  ${BOLD}Backend:${NC}   http://localhost:8000"
