@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Menu, LogOut, Plus, Rocket } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Shield, Settings, Users, Menu, LogOut, Plus, Rocket, Zap } from 'lucide-react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './components/Login'
 import OnboardingFlow from './components/onboarding/OnboardingFlow'
@@ -11,6 +11,7 @@ import Chat from './components/Chat'
 import Agents from './components/Agents'
 import RemoteConfig from './components/RemoteConfig'
 import DeployAgent from './components/DeployAgent'
+import OrchestratePanel from './components/OrchestratePanel'
 import CreateMissionModal from './components/CreateMissionModal'
 import { MissionProvider, useMissions } from './context/MissionContext'
 import { logout as apiLogout } from './api'
@@ -124,6 +125,7 @@ function AppContent() {
                 <nav className="flex flex-col gap-2 flex-1 mt-4">
                     <NavItem icon={Rocket} label="Deploy Agent" active={activeTab === 'deploy'} onClick={() => setActiveTab('deploy')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={LayoutDashboard} label="Mission Board" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} collapsed={isSidebarCollapsed} />
+                    <NavItem icon={Zap} label="Orchestrate" active={activeTab === 'orchestrate'} onClick={() => setActiveTab('orchestrate')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={MessageSquare} label="Agent Hub" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} collapsed={isSidebarCollapsed} />
                     <NavItem icon={Users} label="Agents Pool" active={activeTab === 'agents'} onClick={() => setActiveTab('agents')} collapsed={isSidebarCollapsed} />
                 </nav>
@@ -163,7 +165,7 @@ function AppContent() {
                                 Live Interface
                             </div>
                             <h2 className="text-3xl font-bold font-display capitalize tracking-tight">
-                                {activeTab === 'dashboard' ? 'Strategic Overview' : activeTab === 'hub' ? 'Agent Hub' : activeTab === 'agents' ? 'Agents Pool' : activeTab === 'deploy' ? 'Deploy Agent' : activeTab}
+                                {activeTab === 'dashboard' ? 'Strategic Overview' : activeTab === 'hub' ? 'Agent Hub' : activeTab === 'agents' ? 'Agents Pool' : activeTab === 'deploy' ? 'Deploy Agent' : activeTab === 'orchestrate' ? 'Orchestrate' : activeTab}
                             </h2>
                         </div>
                     </div>
@@ -207,6 +209,7 @@ function AppContent() {
                             {activeTab === 'hub' && <Chat />}
                             {activeTab === 'agents' && <Agents />}
                             {activeTab === 'deploy' && <DeployAgent />}
+                            {activeTab === 'orchestrate' && <OrchestratePanel />}
                             {activeTab === 'settings' && <RemoteConfig />}
                         </motion.div>
                     </AnimatePresence>

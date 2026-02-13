@@ -69,9 +69,12 @@ Agent-orchestrator/
 │   │   ├── chat.py               #   /api/chat/* (sessions, messages, WebSocket)
 │   │   ├── deploy.py             #   /api/deploy/* (configure, launch, stop, logs, health)
 │   │   ├── deploy_chat.py        #   /api/deploy-chat/* (connect/send to deployed containers)
+│   │   ├── orchestrate.py        #   ★ /api/orchestrate/* (submit task, status, agent templates)
 │   │   ├── remote.py             #   /api/remote/* (remote OpenClaw connection management)
 │   │   └── metrics.py            #   /api/metrics (system resource usage)
 │   ├── services/                 # Business logic
+│   │   ├── orchestrator.py       #   ★ Phase 1: Master orchestration (plan → execute → synthesize)
+│   │   ├── agent_templates.py    #   ★ Expert agent templates (Python, React, DB, DevOps, etc.)
 │   │   ├── jason.py              #   Jason master orchestrator (task decomposition, sub-agent mgmt)
 │   │   ├── sub_agent.py          #   Sub-agent executor (isolated task execution)
 │   │   ├── llm_client.py         #   OpenRouter LLM client (httpx)
@@ -106,12 +109,12 @@ Agent-orchestrator/
 │   │       │   └── GoogleAuthButton.tsx  # OAuth button (lazy-loaded)
 │   │       ├── Dashboard.tsx     # Mission board (kanban-style)
 │   │       ├── Chat.tsx          # Agent Hub (chat interface)
-│   │       ├── Agents.tsx        # Agent pool management
+│   │       ├── OrchestratePanel.tsx # ★ Orchestration UI (submit tasks, view progress)
+│   │       ├── Agents.tsx        # Agent pool management (with delete)
 │   │       ├── DeployAgent.tsx   # Deploy Agent page (manual deploy)
 │   │       ├── RemoteConfig.tsx  # Settings (remote OpenClaw config)
 │   │       ├── Login.tsx         # Legacy username/password login
-│   │       ├── CreateMissionModal.tsx # New mission dialog
-│   │       └── ComingSoon.tsx    # Placeholder for upcoming features
+│   │       └── CreateMissionModal.tsx # New mission dialog
 │   ├── package.json
 │   └── .env                      # Frontend env vars (VITE_*)
 │
@@ -151,6 +154,26 @@ Agent-orchestrator/
 | Git Manager | `api/services/git_manager.py` | Git worktree creation/cleanup for isolated work |
 
 **Flow**: User creates a mission → Jason decomposes it into subtasks → Sub-agents execute in isolated worktrees → Results merged back.
+
+### 2b. Phase 1 Orchestration (Multi-Agent Task Pipeline)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Orchestrator | `api/services/orchestrator.py` | Core pipeline: plan → execute → synthesize |
+| Agent Templates | `api/services/agent_templates.py` | 6 domain-specific expert agent configs |
+| Orchestrate Router | `api/routers/orchestrate.py` | REST API: submit task, poll status, list agents |
+| Orchestrate UI | `ui/src/components/OrchestratePanel.tsx` | Task submission + real-time subtask progress |
+
+**Expert Agent Types**: `python-backend`, `react-frontend`, `database-expert`, `devops-expert`, `fullstack`, `testing-expert`
+
+**Flow**:
+```
+User submits coding task
+  → Jason (LLM) decomposes into subtasks with agent types
+  → Independent subtasks execute in parallel via expert LLM prompts
+  → Dependent subtasks wait for prerequisites, receive context from completed deps
+  → Jason (LLM) synthesizes all results into final integrated response
+```
 
 ### 3. Remote OpenClaw Connection
 
@@ -290,3 +313,7 @@ ChatSessions             ChatMessages            MissionDependencies
 5. **Two-phase deployment polling**: Frontend polls in two phases — Phase 1 polls container status (every 2s), Phase 2 polls gateway health (every 4s) — each with a 3-minute timeout.
 
 6. **Dual auth modes**: Google OAuth (default) or legacy username/password (`VITE_LEGACY_LOGIN=true`). When no Google Client ID is configured, onboarding skips the auth phase entirely.
+
+7. **Phase 1 orchestration via LLM**: Expert agents are implemented as LLM calls with domain-specific system prompts (not separate containers). This is faster and more reliable for Phase 1. Phase 2 will add container-based execution where each expert runs in its own OpenClaw container.
+
+8. **Parallel subtask execution**: Subtasks with no unmet dependencies execute concurrently via `asyncio.gather()`. Failed subtasks don't block independent siblings. Dependency results are passed as context to downstream subtasks.
