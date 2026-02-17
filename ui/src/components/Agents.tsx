@@ -115,16 +115,16 @@ export default function Agents() {
     const handleRemove = async (deployId: string, name: string) => {
         if (!confirm(`Remove deployment "${name}"?\n\nThis will stop the container and delete all deployment files. This action cannot be undone.`)) return
         setActionLoading(prev => ({ ...prev, [deployId]: 'removing' }))
-        setActionMessage({ id: deployId, msg: 'Removal in progress... This may take 10-30 seconds.', type: 'success' })
         const startTime = Date.now()
         try {
             await removeDeploy(deployId)
             const elapsed = Math.round((Date.now() - startTime) / 1000)
-            setActionMessage({ id: deployId, msg: `Deployment removed successfully in ${elapsed}s`, type: 'success' })
+            // Don't show action message banner, the in-card banner handles it
             if (expandedDeploy === deployId) {
                 setExpandedDeploy(null)
                 setDeployDetail(null)
             }
+            // Auto-refresh to remove from UI
             await loadDeployments()
         } catch (err: any) {
             setActionMessage({ id: deployId, msg: err?.response?.data?.detail || 'Remove failed', type: 'error' })

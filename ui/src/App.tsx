@@ -70,7 +70,12 @@ function AppContent() {
     // Check for existing token on mount
     useEffect(() => {
         const token = localStorage.getItem('aether_token')
-        if (token) setIsAuthenticated(true)
+        if (token) {
+            setIsAuthenticated(true)
+            // Always start on Deploy Agent page after login
+            setActiveTab('deploy')
+            localStorage.removeItem('aether_active_tab')
+        }
     }, [])
 
     // Auto-navigate to Chat when a deployment completes from onboarding
@@ -147,7 +152,7 @@ function AppContent() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
-                            "flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all shadow-[0_0_15px_rgba(6,87,249,0.2)] hover:shadow-[0_0_25px_rgba(6,87,249,0.4)]",
+                            "flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold transition-all border border-border",
                             isSidebarCollapsed ? "justify-center" : ""
                         )}
                         title={isSidebarCollapsed ? "Documentation" : undefined}
