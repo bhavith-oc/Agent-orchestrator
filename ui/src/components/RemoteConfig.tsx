@@ -10,7 +10,10 @@ import {
     fetchRemoteConfig, setRemoteConfig,
     fetchRemoteAgentFiles, fetchRemoteAgentFile, setRemoteAgentFile,
     fetchRemoteModels, createRemoteAgent,
-    type RemoteStatus, type OpenClawConfig, type AgentFileInfo
+    fetchDeployList, fetchMasterDeployment, setMasterDeployment,
+    fetchLLMProvider, setLLMProvider, testLLMConnection,
+    type RemoteStatus, type OpenClawConfig, type AgentFileInfo, type DeploymentInfo,
+    type LLMProviderInfo, type LLMProviderOption
 } from '../api'
 
 // --- Toast ---
@@ -85,6 +88,22 @@ export default function RemoteConfig() {
     const [cfClientSecret, setCfClientSecret] = useState('')
     const [showCfSecret, setShowCfSecret] = useState(false)
 
+    // Master node designation state
+    const [deployments, setDeployments] = useState<DeploymentInfo[]>([])
+    const [masterDeployId, setMasterDeployId] = useState('')
+    const [masterName, setMasterName] = useState('')
+    const [selectedMasterId, setSelectedMasterId] = useState('')
+    const [settingMaster, setSettingMaster] = useState(false)
+
+    // LLM Provider state
+    const [llmInfo, setLlmInfo] = useState<LLMProviderInfo | null>(null)
+    const [llmProvider, setLlmProviderState] = useState('openrouter')
+    const [llmFields, setLlmFields] = useState<Record<string, string>>({})
+    const [llmSaving, setLlmSaving] = useState(false)
+    const [llmTesting, setLlmTesting] = useState(false)
+    const [llmTestResult, setLlmTestResult] = useState<{ ok: boolean; models?: string[]; error?: string } | null>(null)
+    const [llmShowSensitive, setLlmShowSensitive] = useState<Record<string, boolean>>({})
+
     // Config state
     const [config, setConfig] = useState<OpenClawConfig | null>(null)
     const [configDraft, setConfigDraft] = useState<Record<string, any>>({})
@@ -123,7 +142,32 @@ export default function RemoteConfig() {
         } catch { /* ignore */ }
     }, [])
 
-    useEffect(() => { loadStatus() }, [loadStatus])
+    const loadMasterInfo = useCallback(async () => {
+        try {
+            const [deploys, master] = await Promise.all([
+                fetchDeployList(),
+                fetchMasterDeployment().catch(() => ({ master_deployment_id: '', name: '' })),
+            ])
+            setDeployments(deploys)
+            setMasterDeployId(master.master_deployment_id || '')
+            setMasterName(master.name || '')
+            if (master.master_deployment_id) {
+                setSelectedMasterId(master.master_deployment_id)
+            } else if (deploys.filter(d => d.status === 'running').length > 0) {
+                setSelectedMasterId(deploys.filter(d => d.status === 'running')[0].deployment_id)
+            }
+        } catch { /* ignore */ }
+    }, [])
+
+    const loadLLMProvider = useCallback(async () => {
+        try {
+            const info = await fetchLLMProvider()
+            setLlmInfo(info)
+            setLlmProviderState(info.provider)
+        } catch { /* ignore */ }
+    }, [])
+
+    useEffect(() => { loadStatus(); loadMasterInfo(); loadLLMProvider() }, [loadStatus, loadMasterInfo, loadLLMProvider])
 
     // --- Load config + models + files when connected ---
     useEffect(() => {
@@ -372,9 +416,262 @@ export default function RemoteConfig() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
             {/* Header */}
             <div>
-                <h3 className="text-xl font-bold font-display">Remote OpenClaw Configuration</h3>
-                <p className="text-xs text-slate-500 mt-1">Connect to and configure external OpenClaw containers. Changes are pushed to the container in real-time via <span className="font-mono text-slate-400">config.set</span>.</p>
+                <h3 className="text-xl font-bold font-display">Master Node Deployment</h3>
+                <p className="text-xs text-slate-500 mt-1">Connect to and configure the master OpenClaw node. Changes are pushed to the container in real-time via <span className="font-mono text-slate-400">config.set</span>.</p>
             </div>
+
+            {/* Section 0: Master Node Designation */}
+            <Section title="Master Node Designation" icon={Server} defaultOpen={true} badge={masterDeployId ? masterName || 'Set' : 'None'}>
+                <p className="text-xs text-slate-500 mb-4">
+                    Designate a running container as the master node for orchestration tasks. The Orchestrate page will automatically use this container.
+                </p>
+
+                {masterDeployId ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                <Server className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-bold text-emerald-400">{masterName || masterDeployId.slice(0, 12)}</p>
+                                <p className="text-[10px] text-slate-500 font-mono">{masterDeployId}</p>
+                            </div>
+                            <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">Active Master</span>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                setSettingMaster(true)
+                                try {
+                                    await setMasterDeployment('')
+                                    setMasterDeployId('')
+                                    setMasterName('')
+                                    setToast({ message: 'Master node revoked', type: 'success' })
+                                } catch (e: any) {
+                                    setToast({ message: `Failed to revoke: ${e.message}`, type: 'error' })
+                                } finally {
+                                    setSettingMaster(false)
+                                }
+                            }}
+                            disabled={settingMaster}
+                            className={btnDanger}
+                        >
+                            <Unlink className="w-4 h-4" /> {settingMaster ? 'Revoking...' : 'Revoke Master Node'}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {deployments.filter(d => d.status === 'running').length === 0 ? (
+                            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-400">
+                                No running containers. Deploy an agent first.
+                            </div>
+                        ) : (
+                            <>
+                                <Field label="Select Container" hint="Choose a running container to designate as master node">
+                                    <select
+                                        value={selectedMasterId}
+                                        onChange={e => setSelectedMasterId(e.target.value)}
+                                        className={inputClass}
+                                    >
+                                        {deployments.filter(d => d.status === 'running').map(d => (
+                                            <option key={d.deployment_id} value={d.deployment_id}>
+                                                {d.name} — port {d.port} ({d.deployment_id.slice(0, 10)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </Field>
+                                <button
+                                    onClick={async () => {
+                                        if (!selectedMasterId) return
+                                        setSettingMaster(true)
+                                        try {
+                                            const result = await setMasterDeployment(selectedMasterId)
+                                            setMasterDeployId(selectedMasterId)
+                                            setMasterName(result.name || '')
+                                            setToast({ message: result.message || 'Master node set', type: 'success' })
+                                        } catch (e: any) {
+                                            setToast({ message: `Failed: ${e.response?.data?.detail || e.message}`, type: 'error' })
+                                        } finally {
+                                            setSettingMaster(false)
+                                        }
+                                    }}
+                                    disabled={settingMaster || !selectedMasterId}
+                                    className={btnPrimary}
+                                >
+                                    {settingMaster ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                                    {settingMaster ? 'Setting...' : 'Set as Master Node'}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+            </Section>
+
+            {/* Section: LLM Provider */}
+            <Section title="LLM Provider" icon={Cpu} defaultOpen={false} badge={llmInfo ? `${llmInfo.provider}${llmInfo.configured ? '' : ' ⚠'}` : '...'}>
+                <p className="text-xs text-slate-500 mb-4">
+                    Select the LLM backend for Jason and expert agents. Supports OpenRouter, RunPod Serverless, or any OpenAI-compatible endpoint.
+                </p>
+
+                {llmInfo && (
+                    <div className="space-y-5">
+                        {/* Provider selector tabs */}
+                        <div className="flex gap-2 flex-wrap">
+                            {llmInfo.available_providers.map((p: LLMProviderOption) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => { setLlmProviderState(p.id); setLlmTestResult(null) }}
+                                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                        llmProvider === p.id
+                                            ? 'bg-primary/10 border-primary/40 text-primary shadow-[0_0_10px_rgba(6,87,249,0.2)]'
+                                            : 'bg-slate-900 border-border text-slate-400 hover:border-slate-600'
+                                    }`}
+                                >
+                                    {p.name}
+                                    {llmInfo.provider === p.id && llmInfo.configured && (
+                                        <span className="ml-2 text-emerald-400">●</span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Provider description */}
+                        {llmInfo.available_providers.filter((p: LLMProviderOption) => p.id === llmProvider).map((p: LLMProviderOption) => (
+                            <div key={p.id} className="space-y-4">
+                                <p className="text-[11px] text-slate-400 bg-slate-900/50 rounded-xl px-4 py-3 border border-border">
+                                    {p.description}
+                                </p>
+
+                                {/* Dynamic fields */}
+                                {p.fields.map(f => (
+                                    <Field key={f.key} label={f.label} hint={f.hint}>
+                                        <div className="relative">
+                                            <input
+                                                type={f.sensitive && !llmShowSensitive[f.key] ? 'password' : 'text'}
+                                                value={llmFields[f.key] || ''}
+                                                onChange={e => setLlmFields(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                                placeholder={f.hint}
+                                                className={inputClass}
+                                            />
+                                            {f.sensitive && (
+                                                <button
+                                                    onClick={() => setLlmShowSensitive(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                                >
+                                                    {llmShowSensitive[f.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </Field>
+                                ))}
+
+                                {/* RunPod info box */}
+                                {p.id === 'runpod' && (
+                                    <div className="text-[11px] text-slate-400 bg-slate-900/50 rounded-xl px-4 py-3 border border-border space-y-1">
+                                        <p className="font-bold text-slate-300">RunPod Setup:</p>
+                                        <p>1. Create a Serverless Endpoint at <a href="https://www.runpod.io/console/serverless" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">runpod.io/console/serverless</a></p>
+                                        <p>2. Use the vLLM Worker template with your chosen model</p>
+                                        <p>3. Copy the Endpoint ID from the dashboard URL</p>
+                                        <p>4. Get your API Key from <a href="https://www.runpod.io/console/user/settings" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Settings → API Keys</a></p>
+                                        <p className="text-slate-500 mt-1">Base URL auto-builds to: <span className="font-mono text-primary/70">https://api.runpod.ai/v2/{'<ENDPOINT_ID>'}/openai/v1</span></p>
+                                    </div>
+                                )}
+
+                                {/* Action buttons */}
+                                <div className="flex gap-3 flex-wrap">
+                                    <button
+                                        onClick={async () => {
+                                            setLlmSaving(true)
+                                            setLlmTestResult(null)
+                                            try {
+                                                const payload: any = { provider: p.id }
+                                                if (p.id === 'runpod') {
+                                                    payload.runpod_api_key = llmFields['RUNPOD_API_KEY'] || ''
+                                                    payload.runpod_endpoint_id = llmFields['RUNPOD_ENDPOINT_ID'] || ''
+                                                    payload.runpod_model_name = llmFields['RUNPOD_MODEL_NAME'] || ''
+                                                } else if (p.id === 'custom') {
+                                                    payload.custom_base_url = llmFields['CUSTOM_LLM_BASE_URL'] || ''
+                                                    payload.custom_api_key = llmFields['CUSTOM_LLM_API_KEY'] || ''
+                                                    payload.custom_model_name = llmFields['CUSTOM_LLM_MODEL_NAME'] || ''
+                                                } else {
+                                                    payload.openrouter_api_key = llmFields['OPENROUTER_API_KEY'] || ''
+                                                }
+                                                const result = await setLLMProvider(payload)
+                                                setToast({ message: result.message, type: 'success' })
+                                                await loadLLMProvider()
+                                            } catch (e: any) {
+                                                setToast({ message: `Failed: ${e.response?.data?.detail || e.message}`, type: 'error' })
+                                            } finally {
+                                                setLlmSaving(false)
+                                            }
+                                        }}
+                                        disabled={llmSaving}
+                                        className={btnPrimary}
+                                    >
+                                        {llmSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        {llmSaving ? 'Saving...' : `Activate ${p.name}`}
+                                    </button>
+
+                                    <button
+                                        onClick={async () => {
+                                            setLlmTesting(true)
+                                            setLlmTestResult(null)
+                                            try {
+                                                const result = await testLLMConnection()
+                                                setLlmTestResult(result)
+                                            } catch (e: any) {
+                                                setLlmTestResult({ ok: false, error: e.message })
+                                            } finally {
+                                                setLlmTesting(false)
+                                            }
+                                        }}
+                                        disabled={llmTesting || !llmInfo.configured}
+                                        className={btnSecondary}
+                                    >
+                                        {llmTesting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+                                        {llmTesting ? 'Testing...' : 'Test Connection'}
+                                    </button>
+                                </div>
+
+                                {/* Test result */}
+                                {llmTestResult && (
+                                    <div className={`p-4 rounded-xl border text-xs ${
+                                        llmTestResult.ok
+                                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
+                                            : 'bg-red-500/5 border-red-500/20 text-red-400'
+                                    }`}>
+                                        {llmTestResult.ok ? (
+                                            <div className="space-y-2">
+                                                <p className="font-bold flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Connection successful!</p>
+                                                {llmTestResult.models && llmTestResult.models.length > 0 && (
+                                                    <div>
+                                                        <p className="text-slate-400 mb-1">Available models:</p>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {llmTestResult.models.map(m => (
+                                                                <span key={m} className="px-2 py-0.5 bg-emerald-500/10 rounded-md font-mono text-[10px]">{m}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="font-bold flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {llmTestResult.error}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Current status indicator */}
+                                {llmInfo.provider === p.id && (
+                                    <div className={`flex items-center gap-2 text-[11px] font-bold ${llmInfo.configured ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                        {llmInfo.configured ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                                        {llmInfo.configured ? 'Active and configured' : 'Active but missing configuration'}
+                                        {llmInfo.base_url && <span className="text-slate-500 font-mono font-normal ml-2">→ {llmInfo.base_url}</span>}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </Section>
 
             {/* Section 1: Connection */}
             <Section title="Connection" icon={Link2} defaultOpen={true}>

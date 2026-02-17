@@ -22,9 +22,13 @@ import websockets
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from services.deployer import deployer
+from services.deployer import deployer, DeployConfig
+from config import settings
 
 logger = logging.getLogger(__name__)
+
+# In-memory master deployment ID (persists across requests, resets on server restart)
+_master_deployment_id: str = settings.MASTER_DEPLOYMENT_ID or ""
 
 router = APIRouter(prefix="/api/deploy", tags=["deploy"])
 
@@ -51,6 +55,12 @@ class DeployConfigureRequest(BaseModel):
 class DeployActionRequest(BaseModel):
     """Reference an existing deployment by ID."""
     deployment_id: str
+
+
+class DeployUpdateEnvRequest(BaseModel):
+    """Update specific .env keys for a deployment."""
+    deployment_id: str
+    updates: dict  # KEY=VALUE pairs to set/update
 
 
 # --- Endpoints ---
@@ -171,11 +181,131 @@ async def get_deployment_logs(deployment_id: str, tail: int = 50):
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.get("/master")
+async def get_master_deployment():
+    """Get the currently designated master deployment ID."""
+    global _master_deployment_id
+    await deployer.restore_deployments()
+    if _master_deployment_id:
+        # Verify it still exists
+        try:
+            info = deployer.get_info(_master_deployment_id)
+            return {
+                "master_deployment_id": _master_deployment_id,
+                "name": info.get("name", ""),
+                "port": info.get("port"),
+                "status": info.get("status"),
+            }
+        except ValueError:
+            _master_deployment_id = ""
+    return {"master_deployment_id": "", "name": "", "port": None, "status": None}
+
+
+class SetMasterRequest(BaseModel):
+    deployment_id: str
+
+
+@router.post("/set-master")
+async def set_master_deployment(req: SetMasterRequest):
+    """Designate a deployment as the master node for orchestration."""
+    global _master_deployment_id
+    await deployer.restore_deployments()
+    if req.deployment_id:
+        try:
+            info = deployer.get_info(req.deployment_id)
+            _master_deployment_id = req.deployment_id
+            return {
+                "ok": True,
+                "master_deployment_id": req.deployment_id,
+                "name": info.get("name", ""),
+                "message": f"Master node set to {info.get('name', req.deployment_id)}",
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    else:
+        # Revoke master
+        _master_deployment_id = ""
+        return {"ok": True, "master_deployment_id": "", "name": "", "message": "Master node revoked"}
+
+
 @router.get("/list")
 async def list_deployments():
     """List all tracked deployments."""
     await deployer.restore_deployments()
     return deployer.list_deployments()
+
+
+@router.get("/info/{deployment_id}")
+async def get_deployment_info(deployment_id: str):
+    """Get detailed info about a deployment including its .env configuration.
+
+    Returns deployment metadata plus all .env key-value pairs.
+    Includes both masked (env_config) and full (env_config_full) values.
+    """
+    await deployer.restore_deployments()
+    try:
+        info = deployer.get_info(deployment_id)
+        # Rename raw config to env_config_full for the frontend
+        info["env_config_full"] = info.pop("env_config_raw", {})
+        return info
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/restart")
+async def restart_deployment(req: DeployActionRequest):
+    """Restart a deployment container (force-recreate to pick up .env changes)."""
+    await deployer.restore_deployments()
+    try:
+        result = await deployer.restart(req.deployment_id)
+        return {
+            "ok": True,
+            "deployment_id": result["deployment_id"],
+            "port": result["port"],
+            "status": result["status"],
+            "message": "Container restarted successfully.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.delete("/remove/{deployment_id}")
+async def remove_deployment(deployment_id: str):
+    """Remove a deployment entirely — stops container and deletes all files."""
+    await deployer.restore_deployments()
+    try:
+        result = await deployer.remove(deployment_id)
+        return {
+            "ok": True,
+            "deployment_id": deployment_id,
+            "status": "removed",
+            "message": f"Deployment {deployment_id} removed.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.put("/update-env")
+async def update_deployment_env(req: DeployUpdateEnvRequest):
+    """Update specific .env keys for a deployment.
+
+    After updating, the container should be restarted to pick up changes.
+    """
+    await deployer.restore_deployments()
+    try:
+        deployer.update_env(req.deployment_id, req.updates)
+        return {
+            "ok": True,
+            "deployment_id": req.deployment_id,
+            "updated_keys": list(req.updates.keys()),
+            "message": "Environment updated. Restart the container to apply changes.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/gateway-health/{deployment_id}")

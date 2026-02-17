@@ -59,6 +59,10 @@ async def get_current_user(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    # Block username/password login when Google auth is required
+    if settings.AUTH_REQUIRE_GOOGLE:
+        raise HTTPException(status_code=403, detail="Username/password login is disabled. Please use Google Sign-In.")
+
     result = await db.execute(select(User).where(User.username == req.username))
     user = result.scalar_one_or_none()
 
@@ -147,6 +151,14 @@ async def google_auth(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
     if not google_sub or not email:
         raise HTTPException(status_code=401, detail="Incomplete Google profile")
 
+    # Enforce email allowlist if configured
+    allowed_raw = settings.GOOGLE_ALLOWED_EMAILS
+    if allowed_raw:
+        allowed_emails = [e.strip().lower() for e in allowed_raw.split(",") if e.strip()]
+        if allowed_emails and email.lower() not in allowed_emails:
+            logger.warning(f"Google auth denied for {email} — not in allowlist")
+            raise HTTPException(status_code=403, detail=f"Access denied. Email {email} is not authorized.")
+
     # Find existing user by google_id or email
     result = await db.execute(select(User).where(User.google_id == google_sub))
     user = result.scalar_one_or_none()
@@ -189,6 +201,16 @@ async def google_auth(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
         access_token=token,
         user=UserResponse.model_validate(user),
     )
+
+
+@router.get("/config")
+async def get_auth_config():
+    """Return auth configuration flags so the frontend knows which login modes are available."""
+    return {
+        "google_enabled": bool(settings.GOOGLE_CLIENT_ID),
+        "google_required": settings.AUTH_REQUIRE_GOOGLE,
+        "legacy_login_enabled": not settings.AUTH_REQUIRE_GOOGLE,
+    }
 
 
 @router.get("/me", response_model=UserResponse)

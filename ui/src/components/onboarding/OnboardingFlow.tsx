@@ -1,10 +1,10 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { ArrowRight, Bot, Check, Terminal, Loader2, MessageSquare, LayoutDashboard } from 'lucide-react'
 import Visuals from './Visuals'
 import InstallationView from './InstallationView'
 import ConfigForm, { BotConfig } from './ConfigForm'
 import DeploymentProgress from './DeploymentProgress'
-import { configureDeploy, launchDeploy, googleLogin, DeploymentInfo } from '../../api'
+import { configureDeploy, launchDeploy, googleLogin, fetchAuthConfig, DeploymentInfo } from '../../api'
 
 const HAS_GOOGLE = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -32,13 +32,28 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const [authLoading, setAuthLoading] = useState(false)
     const [authError, setAuthError] = useState<string | null>(null)
     const [deployError, setDeployError] = useState<string | null>(null)
+    const [googleRequired, setGoogleRequired] = useState(false)
+    const [isGoogleAuthed, setIsGoogleAuthed] = useState(false)
+
+    // Fetch auth config from backend to know if Google auth is mandatory
+    useEffect(() => {
+        fetchAuthConfig().then(cfg => {
+            setGoogleRequired(cfg.google_required)
+            // If Google is required but no client ID configured, show error
+            if (cfg.google_required && !HAS_GOOGLE) {
+                setAuthError('Google authentication is required but VITE_GOOGLE_CLIENT_ID is not configured.')
+            }
+        }).catch(() => { /* ignore — fallback to env-based detection */ })
+    }, [])
 
     const handleGoogleSuccess = async (accessToken: string) => {
         setAuthLoading(true)
         setAuthError(null)
         try {
             await googleLogin(accessToken)
-            setPhase(SetupPhase.INSTALLING)
+            setIsGoogleAuthed(true)
+            // Skip onboarding flow - go directly to dashboard after Google auth
+            onComplete()
         } catch (err: any) {
             const detail = err?.response?.data?.detail || err.message || 'Google authentication failed'
             setAuthError(detail)
@@ -174,7 +189,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     <div className="shrink-0 flex items-center justify-between p-6">
                         <h1 className="text-xl font-bold text-white lg:hidden">Aether Orchestrator</h1>
                         <div className="hidden lg:block" />
-                        {phase === SetupPhase.CONFIGURATION && (
+                        {phase === SetupPhase.CONFIGURATION && (!googleRequired || isGoogleAuthed) && (
                             <button
                                 onClick={() => onComplete()}
                                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-gray-300 hover:text-white text-sm font-medium transition-all"

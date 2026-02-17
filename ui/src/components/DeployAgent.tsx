@@ -61,11 +61,26 @@ const btnDanger = "flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/20 
 const btnSecondary = "flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold border border-border transition-all"
 
 export default function DeployAgent() {
-    // Form state — Mandatory
+    // LLM Provider selection
+    const [llmProvider, setLlmProvider] = useState<'openrouter' | 'runpod' | 'custom'>('openrouter')
+    
+    // Form state — OpenRouter
     const [openrouterKey, setOpenrouterKey] = useState('')
     const [showOpenrouterKey, setShowOpenrouterKey] = useState(false)
 
-    // Form state — Optional LLM
+    // Form state — RunPod
+    const [runpodApiKey, setRunpodApiKey] = useState('')
+    const [showRunpodApiKey, setShowRunpodApiKey] = useState(false)
+    const [runpodEndpointId, setRunpodEndpointId] = useState('')
+    const [runpodModelName, setRunpodModelName] = useState('')
+
+    // Form state — Custom
+    const [customBaseUrl, setCustomBaseUrl] = useState('')
+    const [customApiKey, setCustomApiKey] = useState('')
+    const [showCustomApiKey, setShowCustomApiKey] = useState(false)
+    const [customModelName, setCustomModelName] = useState('')
+
+    // Form state — Optional LLM (fallback keys)
     const [anthropicKey, setAnthropicKey] = useState('')
     const [showAnthropicKey, setShowAnthropicKey] = useState(false)
     const [openaiKey, setOpenaiKey] = useState('')
@@ -112,8 +127,17 @@ export default function DeployAgent() {
 
     // --- Configure + Launch (two-step) ---
     const handleDeploy = async () => {
-        if (!openrouterKey) {
+        // Validate based on selected provider
+        if (llmProvider === 'openrouter' && !openrouterKey) {
             setToast({ message: 'OpenRouter API key is required', type: 'error' })
+            return
+        }
+        if (llmProvider === 'runpod' && (!runpodApiKey || !runpodEndpointId || !runpodModelName)) {
+            setToast({ message: 'RunPod API Key, Endpoint ID, and Model Name are required', type: 'error' })
+            return
+        }
+        if (llmProvider === 'custom' && (!customBaseUrl || !customApiKey || !customModelName)) {
+            setToast({ message: 'Custom Base URL, API Key, and Model Name are required', type: 'error' })
             return
         }
         if (telegramToken && !telegramUserId) {
@@ -124,14 +148,28 @@ export default function DeployAgent() {
         // Step 1: Configure
         setConfiguring(true)
         try {
-            const result = await configureDeploy({
-                openrouter_api_key: openrouterKey,
-                anthropic_api_key: anthropicKey || undefined,
-                openai_api_key: openaiKey || undefined,
+            const configPayload: any = {
                 telegram_bot_token: telegramToken || undefined,
                 telegram_user_id: telegramUserId || undefined,
                 whatsapp_number: whatsappNumber || undefined,
-            })
+            }
+
+            // Add provider-specific keys
+            if (llmProvider === 'openrouter') {
+                configPayload.openrouter_api_key = openrouterKey
+                configPayload.anthropic_api_key = anthropicKey || undefined
+                configPayload.openai_api_key = openaiKey || undefined
+            } else if (llmProvider === 'runpod') {
+                configPayload.runpod_api_key = runpodApiKey
+                configPayload.runpod_endpoint_id = runpodEndpointId
+                configPayload.runpod_model_name = runpodModelName
+            } else if (llmProvider === 'custom') {
+                configPayload.custom_llm_base_url = customBaseUrl
+                configPayload.custom_llm_api_key = customApiKey
+                configPayload.custom_llm_model_name = customModelName
+            }
+
+            const result = await configureDeploy(configPayload)
             setDeployResult(result)
             setToast({ message: `Configured! Port: ${result.port}. Launching...`, type: 'success' })
 
@@ -189,46 +227,86 @@ export default function DeployAgent() {
                 </p>
             </div>
 
-            {/* Section 1: Mandatory — OpenRouter Key */}
+            {/* Section 1: LLM Configuration with Provider Selection */}
             <Section title="LLM Configuration" icon={Key} defaultOpen={true} badge="required">
                 <div className="space-y-4">
-                    <Field label="OpenRouter API Key" hint="Required. Get one at openrouter.ai/keys">
-                        <div className="relative">
-                            <input
-                                type={showOpenrouterKey ? 'text' : 'password'}
-                                value={openrouterKey}
-                                onChange={e => setOpenrouterKey(e.target.value)}
-                                placeholder="sk-or-v1-..."
-                                className={inputClass}
-                                disabled={isDeploying}
-                            />
-                            <button
-                                onClick={() => setShowOpenrouterKey(!showOpenrouterKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                            >
-                                {showOpenrouterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                        </div>
-                    </Field>
+                    {/* Provider selector tabs */}
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={() => setLlmProvider('openrouter')}
+                            disabled={isDeploying}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                llmProvider === 'openrouter'
+                                    ? 'bg-primary/10 border-primary/40 text-primary shadow-[0_0_10px_rgba(6,87,249,0.2)]'
+                                    : 'bg-slate-900 border-border text-slate-400 hover:border-slate-600'
+                            }`}
+                        >
+                            OpenRouter
+                        </button>
+                        <button
+                            onClick={() => setLlmProvider('runpod')}
+                            disabled={isDeploying}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                llmProvider === 'runpod'
+                                    ? 'bg-primary/10 border-primary/40 text-primary shadow-[0_0_10px_rgba(6,87,249,0.2)]'
+                                    : 'bg-slate-900 border-border text-slate-400 hover:border-slate-600'
+                            }`}
+                        >
+                            RunPod Serverless
+                        </button>
+                        <button
+                            onClick={() => setLlmProvider('custom')}
+                            disabled={isDeploying}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                llmProvider === 'custom'
+                                    ? 'bg-primary/10 border-primary/40 text-primary shadow-[0_0_10px_rgba(6,87,249,0.2)]'
+                                    : 'bg-slate-900 border-border text-slate-400 hover:border-slate-600'
+                            }`}
+                        >
+                            Custom / Ollama
+                        </button>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Field label="Anthropic API Key" hint="Optional — enables Claude as fallback model">
-                            <div className="relative">
-                                <input
-                                    type={showAnthropicKey ? 'text' : 'password'}
-                                    value={anthropicKey}
-                                    onChange={e => setAnthropicKey(e.target.value)}
-                                    placeholder="sk-ant-..."
-                                    className={inputClass}
-                                    disabled={isDeploying}
-                                />
-                                <button
-                                    onClick={() => setShowAnthropicKey(!showAnthropicKey)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                >
-                                    {showAnthropicKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                            </div>
+                    {/* OpenRouter fields */}
+                    {llmProvider === 'openrouter' && (
+                        <>
+                            <Field label="OpenRouter API Key" hint="Required. Get one at openrouter.ai/keys">
+                                <div className="relative">
+                                    <input
+                                        type={showOpenrouterKey ? 'text' : 'password'}
+                                        value={openrouterKey}
+                                        onChange={e => setOpenrouterKey(e.target.value)}
+                                        placeholder="sk-or-v1-..."
+                                        className={inputClass}
+                                        disabled={isDeploying}
+                                    />
+                                    <button
+                                        onClick={() => setShowOpenrouterKey(!showOpenrouterKey)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    >
+                                        {showOpenrouterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </Field>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field label="Anthropic API Key" hint="Optional — enables Claude as fallback">
+                                    <div className="relative">
+                                        <input
+                                            type={showAnthropicKey ? 'text' : 'password'}
+                                            value={anthropicKey}
+                                            onChange={e => setAnthropicKey(e.target.value)}
+                                            placeholder="sk-ant-..."
+                                            className={inputClass}
+                                            disabled={isDeploying}
+                                        />
+                                        <button
+                                            onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                        >
+                                            {showAnthropicKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                        </button>
+                                    </div>
                         </Field>
                         <Field label="OpenAI API Key" hint="Optional — enables GPT as fallback model">
                             <div className="relative">
@@ -249,6 +327,115 @@ export default function DeployAgent() {
                             </div>
                         </Field>
                     </div>
+                        </>
+                    )}
+
+                    {/* RunPod fields */}
+                    {llmProvider === 'runpod' && (
+                        <>
+                            <div className="text-[11px] text-slate-400 bg-slate-900/50 rounded-xl px-4 py-3 border border-border space-y-1">
+                                <p className="font-bold text-slate-300">RunPod Setup:</p>
+                                <p>1. Create a Serverless Endpoint at <a href="https://www.runpod.io/console/serverless" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">runpod.io/console/serverless</a></p>
+                                <p>2. Use the vLLM Worker template with your chosen model</p>
+                                <p>3. Copy the Endpoint ID from the dashboard</p>
+                                <p>4. Get your API Key from <a href="https://www.runpod.io/console/user/settings" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Settings → API Keys</a></p>
+                            </div>
+
+                            <Field label="RunPod API Key" hint="Required. Get from RunPod Settings → API Keys">
+                                <div className="relative">
+                                    <input
+                                        type={showRunpodApiKey ? 'text' : 'password'}
+                                        value={runpodApiKey}
+                                        onChange={e => setRunpodApiKey(e.target.value)}
+                                        placeholder="rpa_..."
+                                        className={inputClass}
+                                        disabled={isDeploying}
+                                    />
+                                    <button
+                                        onClick={() => setShowRunpodApiKey(!showRunpodApiKey)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    >
+                                        {showRunpodApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </Field>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field label="Endpoint ID" hint="From your RunPod dashboard URL">
+                                    <input
+                                        type="text"
+                                        value={runpodEndpointId}
+                                        onChange={e => setRunpodEndpointId(e.target.value)}
+                                        placeholder="abc123def456"
+                                        className={inputClass}
+                                        disabled={isDeploying}
+                                    />
+                                </Field>
+                                <Field label="Model Name" hint="HuggingFace model ID">
+                                    <input
+                                        type="text"
+                                        value={runpodModelName}
+                                        onChange={e => setRunpodModelName(e.target.value)}
+                                        placeholder="mistralai/Mistral-7B-Instruct-v0.2"
+                                        className={inputClass}
+                                        disabled={isDeploying}
+                                    />
+                                </Field>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Custom provider fields */}
+                    {llmProvider === 'custom' && (
+                        <>
+                            <div className="text-[11px] text-slate-400 bg-slate-900/50 rounded-xl px-4 py-3 border border-border">
+                                <p className="font-bold text-slate-300 mb-1">Custom OpenAI-Compatible Endpoint</p>
+                                <p>Works with Ollama (http://localhost:11434/v1), LM Studio, Together AI, Groq, or any vLLM server.</p>
+                            </div>
+
+                            <Field label="Base URL" hint="OpenAI-compatible endpoint URL">
+                                <input
+                                    type="text"
+                                    value={customBaseUrl}
+                                    onChange={e => setCustomBaseUrl(e.target.value)}
+                                    placeholder="http://localhost:11434/v1"
+                                    className={inputClass}
+                                    disabled={isDeploying}
+                                />
+                            </Field>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field label="API Key" hint="Your API key (use 'ollama' for Ollama)">
+                                    <div className="relative">
+                                        <input
+                                            type={showCustomApiKey ? 'text' : 'password'}
+                                            value={customApiKey}
+                                            onChange={e => setCustomApiKey(e.target.value)}
+                                            placeholder="your-api-key"
+                                            className={inputClass}
+                                            disabled={isDeploying}
+                                        />
+                                        <button
+                                            onClick={() => setShowCustomApiKey(!showCustomApiKey)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                        >
+                                            {showCustomApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </Field>
+                                <Field label="Model Name" hint="Model identifier">
+                                    <input
+                                        type="text"
+                                        value={customModelName}
+                                        onChange={e => setCustomModelName(e.target.value)}
+                                        placeholder="llama3"
+                                        className={inputClass}
+                                        disabled={isDeploying}
+                                    />
+                                </Field>
+                            </div>
+                        </>
+                    )}
                 </div>
             </Section>
 

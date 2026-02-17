@@ -85,13 +85,14 @@ class JasonOrchestrator:
         """
         jason = await self.ensure_jason_exists(db)
 
-        # Guard: OpenRouter API key must be configured
-        api_key = settings.OPENROUTER_API_KEY
-        if not api_key or api_key == "your-openrouter-api-key-here":
+        # Guard: LLM provider must be configured
+        if not self.llm.is_configured():
+            provider = self.llm.provider
             return (
-                "⚠️ **OpenRouter API key not configured.**\n\n"
-                "Set `OPENROUTER_API_KEY` in `api/.env` to a valid key from "
-                "[openrouter.ai](https://openrouter.ai) and restart the backend."
+                f"⚠️ **LLM provider '{provider}' is not configured.**\n\n"
+                f"Set the required keys in `api/.env` and restart the backend.\n"
+                f"Current provider: `LLM_PROVIDER={provider}`\n\n"
+                f"Options: `openrouter`, `runpod`, `custom`"
             )
 
         # Update Jason's status

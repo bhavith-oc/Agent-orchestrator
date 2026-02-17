@@ -6,9 +6,10 @@ import {
 } from 'lucide-react'
 import {
     submitOrchestratorTask, fetchOrchestratorTask, fetchOrchestratorTasks,
-    fetchAgentTemplates, fetchDeployList,
+    fetchAgentTemplates, fetchDeployList, fetchMasterDeployment,
     OrchestratorTask, OrchestratorSubtask, AgentTemplate, DeploymentInfo
 } from '../api'
+import { useMissions } from '../context/MissionContext'
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; icon: typeof Clock }> = {
     pending: { bg: 'bg-slate-500/10 border-slate-500/20', text: 'text-slate-400', icon: Clock },
@@ -199,8 +200,10 @@ export default function OrchestratePanel() {
     const [selectedTask, setSelectedTask] = useState<OrchestratorTask | null>(null)
     const [input, setInput] = useState('')
     const [selectedDeployment, setSelectedDeployment] = useState('')
+    const [selectedMission, setSelectedMission] = useState('')
     const [submitting, setSubmitting] = useState(false)
     const [loading, setLoading] = useState(true)
+    const { missions } = useMissions()
 
     useEffect(() => {
         loadData()
@@ -216,16 +219,20 @@ export default function OrchestratePanel() {
 
     const loadData = async () => {
         try {
-            const [taskList, templateList, deployList] = await Promise.all([
+            const [taskList, templateList, deployList, masterInfo] = await Promise.all([
                 fetchOrchestratorTasks(),
                 fetchAgentTemplates(),
                 fetchDeployList(),
+                fetchMasterDeployment().catch(() => ({ master_deployment_id: '' })),
             ])
             setTasks(taskList)
             setTemplates(templateList)
             setDeployments(deployList)
             const running = deployList.filter(d => d.status === 'running')
-            if (running.length > 0 && !selectedDeployment) {
+            // Auto-select: prefer the designated master, then first running
+            if (masterInfo.master_deployment_id && running.some(d => d.deployment_id === masterInfo.master_deployment_id)) {
+                setSelectedDeployment(masterInfo.master_deployment_id)
+            } else if (running.length > 0 && !selectedDeployment) {
                 setSelectedDeployment(running[0].deployment_id)
             }
         } catch (err) {
@@ -251,7 +258,7 @@ export default function OrchestratePanel() {
         if (!input.trim() || !selectedDeployment || submitting) return
         setSubmitting(true)
         try {
-            const task = await submitOrchestratorTask(input.trim(), selectedDeployment)
+            const task = await submitOrchestratorTask(input.trim(), selectedDeployment, selectedMission || undefined)
             setTasks(prev => [task, ...prev])
             setSelectedTask(task)
             setInput('')
@@ -385,6 +392,28 @@ export default function OrchestratePanel() {
                                 </select>
                                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
                             </div>
+
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2 text-left">Link to Mission (optional)</label>
+                            <div className="relative mb-4">
+                                <select
+                                    value={selectedMission}
+                                    onChange={(e) => setSelectedMission(e.target.value)}
+                                    className="w-full bg-[#0f1117] border border-border rounded-xl py-2.5 px-3 pr-8 text-xs text-slate-300 appearance-none focus:outline-none focus:border-primary/50"
+                                >
+                                    <option value="">No mission — standalone task</option>
+                                    {missions.filter(m => m.status !== 'Completed').map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            [{m.status}] {m.title}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+                            </div>
+                            {selectedMission && (
+                                <p className="text-[10px] text-primary/70 mb-2 text-left">
+                                    Task progress will auto-update this mission's status on the Mission Board.
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>

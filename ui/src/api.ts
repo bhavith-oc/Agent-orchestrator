@@ -95,6 +95,19 @@ export interface SystemMetrics {
     uptime_seconds: number;
 }
 
+// --- Auth Config ---
+
+export interface AuthConfig {
+    google_enabled: boolean;
+    google_required: boolean;
+    legacy_login_enabled: boolean;
+}
+
+export const fetchAuthConfig = async (): Promise<AuthConfig> => {
+    const response = await api.get('/auth/config');
+    return response.data;
+};
+
 // --- Auth API ---
 
 export const login = async (username: string, password: string): Promise<AuthResponse> => {
@@ -416,6 +429,54 @@ export const fetchDeployList = async (): Promise<DeploymentInfo[]> => {
     return response.data;
 };
 
+export interface MasterDeployment {
+    master_deployment_id: string;
+    name: string;
+    port: number | null;
+    status: string | null;
+}
+
+export const fetchMasterDeployment = async (): Promise<MasterDeployment> => {
+    const response = await api.get('/deploy/master');
+    return response.data;
+};
+
+export const setMasterDeployment = async (deploymentId: string): Promise<{ ok: boolean; master_deployment_id: string; name: string; message: string }> => {
+    const response = await api.post('/deploy/set-master', { deployment_id: deploymentId });
+    return response.data;
+};
+
+export interface DeployDetailInfo {
+    deployment_id: string;
+    name: string;
+    port: number;
+    gateway_token: string;
+    status: string;
+    deploy_dir: string;
+    env_config: Record<string, string>;       // Masked sensitive values
+    env_config_full: Record<string, string>;   // Full unmasked values
+}
+
+export const fetchDeployInfo = async (deploymentId: string): Promise<DeployDetailInfo> => {
+    const response = await api.get(`/deploy/info/${deploymentId}`);
+    return response.data;
+};
+
+export const restartDeploy = async (deploymentId: string): Promise<{ ok: boolean; message: string }> => {
+    const response = await api.post('/deploy/restart', { deployment_id: deploymentId });
+    return response.data;
+};
+
+export const removeDeploy = async (deploymentId: string): Promise<{ ok: boolean; message: string }> => {
+    const response = await api.delete(`/deploy/remove/${deploymentId}`);
+    return response.data;
+};
+
+export const updateDeployEnv = async (deploymentId: string, updates: Record<string, string>): Promise<{ ok: boolean; message: string }> => {
+    const response = await api.put('/deploy/update-env', { deployment_id: deploymentId, updates });
+    return response.data;
+};
+
 export interface GatewayHealthResult {
     healthy: boolean;
     http_ok: boolean;
@@ -510,8 +571,8 @@ export interface AgentTemplate {
     tags: string[];
 }
 
-export const submitOrchestratorTask = async (description: string, masterDeploymentId: string): Promise<OrchestratorTask> => {
-    const response = await api.post('/orchestrate/task', { description, master_deployment_id: masterDeploymentId });
+export const submitOrchestratorTask = async (description: string, masterDeploymentId: string, missionId?: string): Promise<OrchestratorTask> => {
+    const response = await api.post('/orchestrate/task', { description, master_deployment_id: masterDeploymentId, mission_id: missionId || undefined });
     return response.data;
 };
 
@@ -576,5 +637,55 @@ export const stopTelegramBridge = async (): Promise<{ status: string }> => {
 
 export const fetchTelegramBridgeStatus = async (): Promise<{ running: boolean; deployment_id: string | null }> => {
     const response = await api.get('/telegram-bridge/status');
+    return response.data;
+};
+
+// --- LLM Provider API ---
+
+export interface LLMProviderField {
+    key: string;
+    label: string;
+    hint: string;
+    sensitive: boolean;
+    required: boolean;
+}
+
+export interface LLMProviderOption {
+    id: string;
+    name: string;
+    description: string;
+    fields: LLMProviderField[];
+}
+
+export interface LLMProviderInfo {
+    provider: string;
+    base_url: string;
+    has_api_key: boolean;
+    model_override: string | null;
+    configured: boolean;
+    available_providers: LLMProviderOption[];
+}
+
+export const fetchLLMProvider = async (): Promise<LLMProviderInfo> => {
+    const response = await api.get('/llm/provider');
+    return response.data;
+};
+
+export const setLLMProvider = async (data: {
+    provider: string;
+    runpod_api_key?: string;
+    runpod_endpoint_id?: string;
+    runpod_model_name?: string;
+    custom_base_url?: string;
+    custom_api_key?: string;
+    custom_model_name?: string;
+    openrouter_api_key?: string;
+}): Promise<{ ok: boolean; provider: string; configured: boolean; message: string }> => {
+    const response = await api.post('/llm/provider', data);
+    return response.data;
+};
+
+export const testLLMConnection = async (): Promise<{ ok: boolean; provider?: string; models?: string[]; error?: string }> => {
+    const response = await api.post('/llm/test');
     return response.data;
 };

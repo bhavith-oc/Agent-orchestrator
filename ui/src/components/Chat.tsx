@@ -88,8 +88,21 @@ export default function Chat() {
         loadHistory()
     }, [mode, deployChatStatus.connected])
 
+    // Only auto-scroll when a new message is added (not on initial load)
+    const prevMsgCount = useRef(0)
+    const chatContainerRef = useRef<HTMLDivElement>(null)
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        if (messages.length > prevMsgCount.current && prevMsgCount.current > 0) {
+            // Auto-scroll only if user is already near the bottom
+            const container = chatContainerRef.current
+            if (container) {
+                const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150
+                if (isNearBottom) {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }
+            }
+        }
+        prevMsgCount.current = messages.length
     }, [messages])
 
     const checkRemoteStatus = async () => {
@@ -379,12 +392,11 @@ export default function Chat() {
                         </button>
                     )}
 
-                    {/* Local orchestrator agents */}
+                    {/* Local orchestrator agents (exclude master — shown via deployments) */}
                     {agents
-                        .filter(a => a.type === 'master' || a.status === 'active' || a.status === 'busy')
+                        .filter(a => a.type !== 'master' && (a.status === 'active' || a.status === 'busy'))
                         .map((agent) => (
-                        <button key={agent.id} className={`p-4 rounded-2xl border text-left transition-all ${agent.type === 'master' ? 'bg-primary/10 border-primary/20 ring-1 ring-primary/10' : 'bg-card/50 border-border hover:border-slate-700'
-                            }`}>
+                        <button key={agent.id} className="p-4 rounded-2xl border text-left transition-all bg-card/50 border-border hover:border-slate-700">
                             <div className="flex items-center gap-3 mb-1">
                                 <div className={`w-2 h-2 rounded-full ${getAgentDotColor(agent.status)}`} />
                                 <span className="font-bold text-sm tracking-tight">{agent.name}</span>
@@ -393,7 +405,7 @@ export default function Chat() {
                         </button>
                     ))}
 
-                    {runningDeployments.length === 0 && !remoteStatus.connected && agents.filter(a => a.type === 'master' || a.status === 'active' || a.status === 'busy').length === 0 && (
+                    {runningDeployments.length === 0 && !remoteStatus.connected && agents.filter(a => a.type !== 'master' && (a.status === 'active' || a.status === 'busy')).length === 0 && (
                         <p className="text-xs text-slate-600 px-2">No agents online.</p>
                     )}
                 </div>
@@ -440,13 +452,13 @@ export default function Chat() {
                         <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
                         <div className="flex-1">
                             <span className="text-[11px] font-bold text-red-400">Remote Jason not connected</span>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Connect via Settings → Remote OpenClaw Configuration first.</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">Connect via Master Node → Connection first.</p>
                         </div>
                     </div>
                 )}
 
                 {/* Messages Stream */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-8 space-y-6">
                     {messages.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4">
                             <Bot className="w-12 h-12 text-primary/30" />

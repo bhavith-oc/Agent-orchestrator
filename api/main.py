@@ -8,7 +8,7 @@ import uvicorn
 
 from config import settings
 from database import init_db
-from routers import auth, agents, missions, chat, metrics, remote, deploy, deploy_chat, orchestrate, team_chat, telegram_bridge
+from routers import auth, agents, missions, chat, metrics, remote, deploy, deploy_chat, orchestrate, team_chat, telegram_bridge, llm_provider
 from services.jason import jason_orchestrator
 from services.remote_jason import remote_jason_manager
 
@@ -103,6 +103,7 @@ app.include_router(deploy_chat.router)
 app.include_router(orchestrate.router)
 app.include_router(team_chat.router)
 app.include_router(telegram_bridge.router)
+app.include_router(llm_provider.router)
 
 
 @app.get("/api/health")

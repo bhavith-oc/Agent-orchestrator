@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/orchestrate", tags=["orchestrate"])
 class SubmitTaskRequest(BaseModel):
     description: str
     master_deployment_id: str
+    mission_id: Optional[str] = None  # Link to a Mission Board card for auto-status updates
 
 
 class TaskResponse(BaseModel):
@@ -61,6 +62,7 @@ async def submit_task(req: SubmitTaskRequest):
     task = await orchestrator.submit_task(
         description=req.description,
         master_deployment_id=req.master_deployment_id,
+        mission_id=req.mission_id,
     )
     return TaskResponse(**task.to_dict())
 

@@ -671,6 +671,151 @@ class Deployer:
             for k, v in self._active_deployments.items()
         ]
 
+    def get_info(self, deployment_id: str) -> dict:
+        """Get detailed info about a deployment including its .env config (sensitive values masked)."""
+        info = self._active_deployments.get(deployment_id)
+        if not info:
+            raise ValueError(f"Deployment {deployment_id} not found")
+
+        # Parse .env to get all config key-value pairs
+        env_config: dict[str, str] = {}
+        env_path = info.get("env_path", "")
+        if env_path and Path(env_path).exists():
+            for line in Path(env_path).read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, val = line.split("=", 1)
+                    env_config[key.strip()] = val.strip()
+
+        # Mask sensitive values for display
+        SENSITIVE_KEYS = {"OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+                          "OPENCLAW_GATEWAY_TOKEN", "TELEGRAM_BOT_TOKEN"}
+        masked_config = {}
+        for k, v in env_config.items():
+            if k in SENSITIVE_KEYS and v:
+                masked_config[k] = v[:8] + "..." + v[-4:] if len(v) > 12 else "***"
+            else:
+                masked_config[k] = v
+
+        return {
+            "deployment_id": deployment_id,
+            "name": info.get("name", deployment_id[:8]),
+            "port": info.get("port"),
+            "gateway_token": info.get("gateway_token", ""),
+            "status": info.get("status"),
+            "deploy_dir": info.get("deploy_dir"),
+            "env_config": masked_config,
+            "env_config_raw": env_config,  # Full values for update operations
+        }
+
+    async def restart(self, deployment_id: str) -> dict:
+        """Restart a deployment container (docker compose restart)."""
+        info = self._active_deployments.get(deployment_id)
+        if not info:
+            raise ValueError(f"Deployment {deployment_id} not found")
+
+        compose_path = info["compose_path"]
+        env_path = info["env_path"]
+        deploy_dir = info["deploy_dir"]
+
+        self._add_log(deployment_id, "─── RESTART SEQUENCE ───")
+
+        # Force recreate to pick up any .env changes
+        stdout, stderr, rc = await self._run_compose(
+            ["-f", compose_path, "--env-file", env_path, "up", "-d", "--force-recreate"],
+            cwd=deploy_dir,
+        )
+
+        if rc != 0:
+            error_msg = _strip_ansi(stderr.strip() or stdout.strip())
+            self._add_log(deployment_id, f"RESTART FAILED: {error_msg}", level="ERROR")
+            raise RuntimeError(f"Restart failed: {error_msg}")
+
+        info["status"] = "running"
+        self._add_log(deployment_id, "Container restarted successfully ✓")
+        logger.info(f"Deployment {deployment_id} restarted")
+        return info
+
+    async def remove(self, deployment_id: str) -> dict:
+        """Remove a deployment entirely — stops container and deletes deployment directory."""
+        info = self._active_deployments.get(deployment_id)
+        if not info:
+            raise ValueError(f"Deployment {deployment_id} not found")
+
+        # Stop container first
+        try:
+            await self.stop(deployment_id)
+        except Exception as e:
+            logger.warning(f"Stop failed during remove for {deployment_id}: {e}")
+
+        # Remove deployment directory
+        deploy_dir = Path(info["deploy_dir"])
+        if deploy_dir.exists():
+            shutil.rmtree(deploy_dir)
+            logger.info(f"Removed deployment directory: {deploy_dir}")
+
+        # Remove from tracking
+        self._active_deployments.pop(deployment_id, None)
+        self._deploy_logs.pop(deployment_id, None)
+
+        logger.info(f"Deployment {deployment_id} removed completely")
+        return {"deployment_id": deployment_id, "status": "removed"}
+
+    def update_env(self, deployment_id: str, updates: dict[str, str]) -> dict:
+        """Update specific keys in a deployment's .env file.
+
+        Args:
+            deployment_id: The deployment to update
+            updates: Dict of KEY=VALUE pairs to set/update in .env
+
+        Returns:
+            Updated deployment info
+        """
+        info = self._active_deployments.get(deployment_id)
+        if not info:
+            raise ValueError(f"Deployment {deployment_id} not found")
+
+        env_path = Path(info["env_path"])
+        if not env_path.exists():
+            raise ValueError(f"Env file not found for {deployment_id}")
+
+        # Read existing .env
+        lines = env_path.read_text().splitlines()
+        updated_keys = set()
+
+        # Update existing lines
+        new_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#") and "=" in stripped:
+                key = stripped.split("=", 1)[0].strip()
+                if key in updates:
+                    new_lines.append(f"{key}={updates[key]}")
+                    updated_keys.add(key)
+                    continue
+            new_lines.append(line)
+
+        # Append any new keys that weren't in the file
+        for key, val in updates.items():
+            if key not in updated_keys:
+                new_lines.append(f"{key}={val}")
+
+        env_path.write_text("\n".join(new_lines) + "\n")
+
+        # Update in-memory tracking
+        if "PORT" in updates:
+            info["port"] = int(updates["PORT"])
+        if "DEPLOY_NAME" in updates:
+            info["name"] = updates["DEPLOY_NAME"]
+        if "OPENCLAW_GATEWAY_TOKEN" in updates:
+            info["gateway_token"] = updates["OPENCLAW_GATEWAY_TOKEN"]
+
+        self._add_log(deployment_id, f"Env updated: {', '.join(updates.keys())}")
+        logger.info(f"Deployment {deployment_id} env updated: {list(updates.keys())}")
+        return info
+
 
 # Singleton
 deployer = Deployer()
