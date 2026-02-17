@@ -115,10 +115,12 @@ export default function Agents() {
     const handleRemove = async (deployId: string, name: string) => {
         if (!confirm(`Remove deployment "${name}"?\n\nThis will stop the container and delete all deployment files. This action cannot be undone.`)) return
         setActionLoading(prev => ({ ...prev, [deployId]: 'removing' }))
-        setActionMessage(null)
+        setActionMessage({ id: deployId, msg: 'Removal in progress... This may take 10-30 seconds.', type: 'success' })
+        const startTime = Date.now()
         try {
             await removeDeploy(deployId)
-            setActionMessage({ id: deployId, msg: 'Deployment removed', type: 'success' })
+            const elapsed = Math.round((Date.now() - startTime) / 1000)
+            setActionMessage({ id: deployId, msg: `Deployment removed successfully in ${elapsed}s`, type: 'success' })
             if (expandedDeploy === deployId) {
                 setExpandedDeploy(null)
                 setDeployDetail(null)
@@ -359,22 +361,29 @@ export default function Agents() {
                                             {/* Detail info */}
                                             {deployDetail && !detailLoading && (
                                                 <div className="space-y-4">
+                                                    {/* Removal progress banner */}
+                                                    {actionLoading[d.deployment_id] === 'removing' && (
+                                                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
+                                                            <Loader2 className="w-5 h-5 text-amber-400 animate-spin shrink-0" />
+                                                            <div>
+                                                                <p className="text-sm font-bold text-amber-400">Removal in Progress</p>
+                                                                <p className="text-xs text-amber-300/70 mt-0.5">Stopping container and cleaning up files... This may take 10-30 seconds.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {/* Connection info */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                                         <div className="bg-[#0f1117] rounded-xl p-3 border border-border">
                                                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Port</p>
                                                             <span className="text-lg font-bold font-display leading-none">{deployDetail.port}</span>
-                                                        </div>
-                                                        <div className="bg-[#0f1117] rounded-xl p-3 border border-border">
-                                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Connection</p>
-                                                            <p className="text-xs text-slate-300 font-mono">ws://localhost:{deployDetail.port}</p>
                                                         </div>
                                                         <div className="bg-[#0f1117] rounded-xl p-3 border border-border">
                                                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Deployment ID</p>
                                                             <p className="text-xs text-slate-300 font-mono">{deployDetail.deployment_id}</p>
                                                         </div>
                                                         <a
-                                                            href={`http://localhost:${deployDetail.port}/?token=${deployDetail.gateway_token}`}
+                                                            href={`http://72.61.254.5:${deployDetail.port}/?token=${deployDetail.gateway_token}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="bg-[#0f1117] rounded-xl p-3 border border-primary/20 hover:border-primary/50 transition-all group/link"

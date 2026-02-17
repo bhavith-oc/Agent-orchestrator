@@ -59,7 +59,7 @@ declare global {
 
 function AppContent() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [activeTab, setActiveTab] = useState('dashboard')
+    const [activeTab, setActiveTab] = useState('deploy')
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [pendingDeploymentId, setPendingDeploymentId] = useState<string | null>(null)
