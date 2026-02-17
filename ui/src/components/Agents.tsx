@@ -301,12 +301,9 @@ export default function Agents() {
                                 </div>
                                 {/* Summary row */}
                                 {!isExpanded && (
-                                    <div className="flex gap-4 mt-4">
-                                        <div className="bg-[#0f1117] rounded-xl px-3 py-2 border border-border text-xs text-slate-400">
+                                    <div className="mt-4">
+                                        <div className="bg-[#0f1117] rounded-xl px-4 py-2.5 border border-border text-sm text-slate-400 inline-block">
                                             Port: <span className="font-bold text-slate-200">{d.port}</span>
-                                        </div>
-                                        <div className="bg-[#0f1117] rounded-xl px-3 py-2 border border-border text-xs text-slate-400">
-                                            ws://localhost:{d.port}
                                         </div>
                                     </div>
                                 )}

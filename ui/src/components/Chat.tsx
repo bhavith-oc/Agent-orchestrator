@@ -255,36 +255,6 @@ export default function Chat() {
                 {/* Mode Toggle */}
                 <div className="p-3 rounded-2xl bg-[#1a1e29] border border-border">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">Orchestrator</p>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => runningDeployments.length > 0 && setMode('deployed')}
-                            disabled={runningDeployments.length === 0}
-                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${mode === 'deployed'
-                                ? 'bg-primary/20 text-primary border border-primary/30'
-                                : runningDeployments.length > 0
-                                    ? 'bg-slate-800/50 text-slate-400 border border-transparent hover:border-slate-700'
-                                    : 'bg-slate-800/30 text-slate-600 border border-transparent cursor-not-allowed'
-                            }`}
-                            title={runningDeployments.length === 0 ? 'Deploy an agent first via Deploy Agent page' : ''}
-                        >
-                            <Rocket className="w-3.5 h-3.5" />
-                            Deployed
-                            {runningDeployments.length > 0 && <span className="text-[8px] ml-0.5">({runningDeployments.length})</span>}
-                        </button>
-                        <button
-                            onClick={() => remoteStatus.connected && setMode('remote')}
-                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${mode === 'remote'
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                : remoteStatus.connected
-                                    ? 'bg-slate-800/50 text-slate-400 border border-transparent hover:border-slate-700'
-                                    : 'bg-slate-800/30 text-slate-600 border border-transparent cursor-not-allowed'
-                            }`}
-                            disabled={!remoteStatus.connected}
-                        >
-                            <Globe className="w-3.5 h-3.5" />
-                            Remote
-                        </button>
-                    </div>
 
                     {/* Deployed mode — deployment selector */}
                     {mode === 'deployed' && (

@@ -72,9 +72,6 @@ function AppContent() {
         const token = localStorage.getItem('aether_token')
         if (token) {
             setIsAuthenticated(true)
-            // Always start on Deploy Agent page after login
-            setActiveTab('deploy')
-            localStorage.removeItem('aether_active_tab')
         }
     }, [])
 
