@@ -130,7 +130,59 @@ fi
 read -p "$(echo -e "${YELLOW}[OPTIONAL]${NC} WhatsApp number (+1234567890, Enter to skip): ")" WHATSAPP_NUM
 [ -n "$WHATSAPP_NUM" ] && log "WhatsApp configured" || info "Skipped WhatsApp"
 
-# ── Step 5: Write .env ───────────────────────────────────
+echo ""
+echo -e "${BOLD}── Local LLM (Ollama) ──${NC}"
+echo ""
+
+# Check if Ollama is available
+OLLAMA_AVAILABLE=false
+LOCAL_BASE_URL=""
+LOCAL_MODEL_NAME=""
+LOCAL_API_KEY="ollama"
+
+if command -v ollama &> /dev/null; then
+    OLLAMA_AVAILABLE=true
+    info "Ollama detected on this system"
+    
+    # List available models
+    MODELS=$(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}' || echo "")
+    if [ -n "$MODELS" ]; then
+        echo -e "${CYAN}Available models:${NC}"
+        echo "$MODELS" | while read -r model; do
+            echo "  - $model"
+        done
+        echo ""
+    fi
+    
+    read -p "$(echo -e "${YELLOW}[OPTIONAL]${NC} Use local Ollama model? (Enter model name or skip): ")" LOCAL_MODEL_CHOICE
+    if [ -n "$LOCAL_MODEL_CHOICE" ]; then
+        LOCAL_MODEL_NAME="$LOCAL_MODEL_CHOICE"
+        LOCAL_BASE_URL="http://host.docker.internal:11434/v1"
+        log "Local LLM configured: $LOCAL_MODEL_NAME"
+        
+        # Warn about small models
+        if [[ "$LOCAL_MODEL_NAME" == *":1.5b"* ]] || [[ "$LOCAL_MODEL_NAME" == *":0.5b"* ]]; then
+            warn "Small models (1.5b or less) may output raw JSON instead of natural language."
+            warn "Consider using a 3b+ model for better results."
+        fi
+    else
+        info "Skipped local LLM"
+    fi
+else
+    info "Ollama not installed. Install with: curl -fsSL https://ollama.com/install.sh | sh"
+    read -p "$(echo -e "${YELLOW}[OPTIONAL]${NC} Custom OpenAI-compatible endpoint URL (Enter to skip): ")" CUSTOM_URL
+    if [ -n "$CUSTOM_URL" ]; then
+        LOCAL_BASE_URL="$CUSTOM_URL"
+        read -p "$(echo -e "${CYAN}[REQUIRED]${NC} Model name: ")" LOCAL_MODEL_NAME
+        read -p "$(echo -e "${YELLOW}[OPTIONAL]${NC} API key (Enter for 'ollama'): ")" CUSTOM_API_KEY
+        LOCAL_API_KEY="${CUSTOM_API_KEY:-ollama}"
+        log "Custom LLM endpoint configured"
+    else
+        info "Skipped local LLM"
+    fi
+fi
+
+# ── Step 5: Write .env ───────────────────────────────────────
 info "Writing .env..."
 
 if [ -f .env ]; then
@@ -157,6 +209,11 @@ TELEGRAM_USER_ID=${TELEGRAM_UID:-}
 
 # [OPTIONAL] WhatsApp
 WHATSAPP_NUMBER=${WHATSAPP_NUM:-}
+
+# [OPTIONAL] Local LLM (Ollama)
+LOCAL_BASE_URL=${LOCAL_BASE_URL:-}
+LOCAL_MODEL_NAME=${LOCAL_MODEL_NAME:-}
+LOCAL_API_KEY=${LOCAL_API_KEY:-ollama}
 EOF
 
 log ".env written"

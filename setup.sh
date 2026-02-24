@@ -61,6 +61,117 @@ format_ip_for_url() {
 }
 
 # ═════════════════════════════════════════════════════════════════
+# OLLAMA — install and configure local LLM support
+# ═════════════════════════════════════════════════════════════════
+install_ollama() {
+    info "Installing Ollama..."
+
+    # Check if already installed
+    if command -v ollama &>/dev/null; then
+        success "Ollama already installed: $(ollama --version 2>/dev/null || echo 'installed')"
+    else
+        # Install Ollama
+        curl -fsSL https://ollama.com/install.sh | sh
+        success "Ollama installed"
+    fi
+
+    # Configure Ollama to listen on all interfaces (for Docker access)
+    if [ -f /etc/systemd/system/ollama.service ]; then
+        if ! grep -q "OLLAMA_HOST=0.0.0.0" /etc/systemd/system/ollama.service; then
+            info "Configuring Ollama for Docker access..."
+            sudo sed -i '/\[Service\]/a Environment="OLLAMA_HOST=0.0.0.0"' /etc/systemd/system/ollama.service
+            sudo systemctl daemon-reload
+            sudo systemctl restart ollama
+            success "Ollama configured for Docker access (OLLAMA_HOST=0.0.0.0)"
+        fi
+    fi
+
+    # Start Ollama service
+    if ! pgrep -x "ollama" > /dev/null; then
+        info "Starting Ollama service..."
+        sudo systemctl start ollama 2>/dev/null || ollama serve &>/dev/null &
+        sleep 3
+    fi
+
+    # Detect hardware and recommend model
+    echo ""
+    info "Detecting hardware configuration..."
+
+    # Get total RAM in GB
+    TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+
+    # Check for GPU
+    HAS_NVIDIA_GPU=false
+    GPU_VRAM_GB=0
+    if command -v nvidia-smi &>/dev/null; then
+        HAS_NVIDIA_GPU=true
+        GPU_VRAM_MB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 || echo "0")
+        GPU_VRAM_GB=$((GPU_VRAM_MB / 1024))
+        success "NVIDIA GPU detected: ${GPU_VRAM_GB}GB VRAM"
+    else
+        info "No NVIDIA GPU detected (CPU-only mode)"
+    fi
+
+    success "System RAM: ${TOTAL_RAM_GB}GB"
+
+    # Recommend model based on hardware
+    echo ""
+    echo -e "${BOLD}Model Recommendations:${NC}"
+
+    RECOMMENDED_MODEL=""
+    if [ "$HAS_NVIDIA_GPU" = true ] && [ "$GPU_VRAM_GB" -ge 8 ]; then
+        echo -e "  ${GREEN}●${NC} qwen2.5-coder:7b    - Best quality (requires 8GB+ VRAM)"
+        echo -e "  ${YELLOW}●${NC} qwen2.5-coder:3b    - Good balance (requires 4GB+ VRAM)"
+        echo -e "  ${CYAN}●${NC} qwen2.5-coder:1.5b  - Fastest (requires 2GB+ VRAM)"
+        RECOMMENDED_MODEL="qwen2.5-coder:7b"
+    elif [ "$HAS_NVIDIA_GPU" = true ] && [ "$GPU_VRAM_GB" -ge 4 ]; then
+        echo -e "  ${GREEN}●${NC} qwen2.5-coder:3b    - Recommended for your GPU"
+        echo -e "  ${CYAN}●${NC} qwen2.5-coder:1.5b  - Faster alternative"
+        RECOMMENDED_MODEL="qwen2.5-coder:3b"
+    elif [ "$TOTAL_RAM_GB" -ge 16 ]; then
+        echo -e "  ${GREEN}●${NC} qwen2.5-coder:7b    - Best for 16GB+ RAM (slow on CPU)"
+        echo -e "  ${YELLOW}●${NC} qwen2.5-coder:3b    - Good balance"
+        echo -e "  ${CYAN}●${NC} qwen2.5-coder:1.5b  - Fastest on CPU"
+        RECOMMENDED_MODEL="qwen2.5-coder:3b"
+    elif [ "$TOTAL_RAM_GB" -ge 8 ]; then
+        echo -e "  ${GREEN}●${NC} qwen2.5-coder:3b    - Recommended for 8GB RAM"
+        echo -e "  ${CYAN}●${NC} qwen2.5-coder:1.5b  - Faster alternative"
+        RECOMMENDED_MODEL="qwen2.5-coder:1.5b"
+    else
+        echo -e "  ${CYAN}●${NC} qwen2.5-coder:1.5b  - Only option for <8GB RAM"
+        RECOMMENDED_MODEL="qwen2.5-coder:1.5b"
+    fi
+
+    echo ""
+    echo -e "${BOLD}Note:${NC} Smaller models (1.5b) may output raw JSON instead of natural"
+    echo -e "      language when used with function calling. For best results,"
+    echo -e "      use 3b or larger models."
+    echo ""
+
+    # Ask user which model to install
+    read -rp "Install model? [$RECOMMENDED_MODEL] (Enter for default, 'n' to skip): " MODEL_CHOICE
+
+    if [ "$MODEL_CHOICE" = "n" ] || [ "$MODEL_CHOICE" = "N" ]; then
+        info "Skipping model download. You can install later with: ollama pull <model>"
+    else
+        MODEL_TO_INSTALL="${MODEL_CHOICE:-$RECOMMENDED_MODEL}"
+        info "Downloading $MODEL_TO_INSTALL (this may take a few minutes)..."
+        ollama pull "$MODEL_TO_INSTALL"
+        success "Model $MODEL_TO_INSTALL installed"
+
+        # Save the model name for later use
+        echo "$MODEL_TO_INSTALL" > "$SCRIPT_DIR/.ollama_model"
+    fi
+
+    echo ""
+    success "Ollama setup complete!"
+    echo -e "  ${CYAN}Test:${NC}  ollama run qwen2.5-coder:1.5b 'Hello'"
+    echo -e "  ${CYAN}List:${NC}  ollama list"
+    echo -e "  ${CYAN}API:${NC}   http://localhost:11434/v1/chat/completions"
+}
+
+# ═════════════════════════════════════════════════════════════════
 # STOP — kill running services
 # ═════════════════════════════════════════════════════════════════
 do_stop() {
@@ -174,8 +285,25 @@ do_install() {
 
     success "Node: $(node --version), npm: $(npm --version)"
 
+    # ── Ollama (Optional) ─────────────────────────────────────────
+    step "4/7 — Ollama (Local LLM Support)"
+
+    if [ "${INSTALL_OLLAMA:-}" = "true" ] || [ "${INSTALL_OLLAMA:-}" = "1" ]; then
+        install_ollama
+    else
+        echo ""
+        echo -e "${BOLD}Would you like to install Ollama for local LLM support?${NC}"
+        echo -e "This allows running AI models locally without API costs."
+        read -rp "Install Ollama? [y/N]: " INSTALL_OLLAMA_CHOICE
+        if [[ "$INSTALL_OLLAMA_CHOICE" =~ ^[Yy]$ ]]; then
+            install_ollama
+        else
+            info "Skipping Ollama installation"
+        fi
+    fi
+
     # ── Docker ───────────────────────────────────────────────────
-    step "4/6 — Docker & Docker Compose"
+    step "5/7 — Docker & Docker Compose"
 
     if ! command -v docker &>/dev/null; then
         info "Docker not found — installing via official script..."
@@ -205,7 +333,7 @@ do_install() {
     fi
 
     # ── Python venv & deps ───────────────────────────────────────
-    step "5/6 — Python Virtual Environment & Dependencies"
+    step "6/7 — Python Virtual Environment & Dependencies"
 
     if [ ! -d "$VENV_DIR" ]; then
         info "Creating virtual environment..."
@@ -218,7 +346,7 @@ do_install() {
     success "Python dependencies installed ($(pip list 2>/dev/null | wc -l) packages)"
 
     # ── Node packages ────────────────────────────────────────────
-    step "6/6 — Frontend Dependencies"
+    step "7/7 — Frontend Dependencies"
 
     cd "$UI_DIR"
     if [ ! -d "node_modules" ]; then
